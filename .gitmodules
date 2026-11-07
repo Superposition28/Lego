@@ -1,0 +1,6 @@
+
+[submodule "Games/LegoHarryPotter"]
+    path = Games/Lego_Harry_Potter
+    url = https://github.com/Superposition28/Lego_Harry_Potter.git
+
+

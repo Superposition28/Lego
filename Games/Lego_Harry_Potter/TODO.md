@@ -15,7 +15,7 @@
 - [ ] Implement full batch extraction scripts for `.datwin` (`LZHAM` + raw) and `PakDat v1.01` (`LZ2K` + raw).
 - [ ] Harvest additional PC-only file paths from decompressed `.txt` / `.cfg` / `.led` scripts inside `.datwin` to resolve remaining `.datwin` hashes.
 - [ ] Extract and inspect `.pkiwin`/`.pkdwin` launcher resources.
-- [ ] Declare RemakeEngine extraction operations in `operations.toml`.
+- [x] Declare RemakeEngine extraction operations in `operations.toml`.
 
 ## Stage 3: Asset Analysis & Conversion
 - [ ] Inspect texture packaging (DirectX `.dds` surfaces vs PS3 RSX `.txd`/swizzled textures).
@@ -24,6 +24,6 @@
 - [ ] Disassemble precompiled Direct3D shader cache (`shaderblob_pc.blob`).
 
 ## Stage 4: Engine Integration & Future Work
-- [ ] Update RemakeEngine for nested sub-module discovery (per top-level `TODO.md`).
+- [x] Update RemakeEngine for nested sub-module discovery (per top-level `TODO.md`).
 - [ ] Evaluate Godot scene assembly and asset import pipelines once extraction stabilizes.
 

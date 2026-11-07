@@ -1,12 +1,11 @@
 # Global LEGO Operations Manifest
 # Placeholders: Game_Root, Project_Root are built into the engine.
-# Note: Sub-game module discovery is not yet implemented in the engine, so LEGO Harry Potter
-# operations are hosted here for execution via `--game_module Lego` and mirrored in
-# `Games/Lego_Harry_Potter/operations.toml`.
+# Sub-game modules under `Games/*` (such as `Games/Lego_Harry_Potter/operations.toml`) are
+# discovered and executed directly by the engine (e.g. `--game_module Lego_Harry_Potter`).
 
 title = "Global LEGO Operations"
 
-## Downloads the tools listed in Tools.toml
+## Downloads the shared tools listed in Tools.toml
 [[operation]]
 id = -1
 name = "Download Required Tools"
@@ -15,28 +14,4 @@ depends-on = []
 script_type = "engine"
 script = "download-tools"
 tools_manifest = "{{Game_Root}}/Tools.toml"
-
-# Extracts all PakDat v1.01 (.DAT) archives from the PS3 builds of LEGO Harry Potter
-[[operation]]
-id = 1
-name = "Extract Archives (.DAT) - LEGO Harry Potter (PS3)"
-run-all = true
-depends-on = [-1]
-script_type = "bms"
-script = "{{Game_Root}}/Games/Lego_Harry_Potter/operations/lhp_dat.bms"
-input = "{{Game_Root}}/Games/Lego_Harry_Potter/Source/Orginals/PS3"
-output = "{{Game_Root}}/Games/Lego_Harry_Potter/GameFiles/LHP-PS3"
-extension = ".dat"
-
-# Extracts all PakDat v1.01 (.DAT) archives from the Xbox 360 builds of LEGO Harry Potter
-[[operation]]
-id = 2
-name = "Extract Archives (.DAT) - LEGO Harry Potter (Xbox 360)"
-run-all = true
-depends-on = [-1]
-script_type = "bms"
-script = "{{Game_Root}}/Games/Lego_Harry_Potter/operations/lhp_dat.bms"
-input = "{{Game_Root}}/Games/Lego_Harry_Potter/Source/Orginals/Xbox_360"
-output = "{{Game_Root}}/Games/Lego_Harry_Potter/GameFiles/LHP-XBOX"
-extension = ".dat"
 
