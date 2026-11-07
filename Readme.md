@@ -1,6 +1,6 @@
 # LEGO Games: Extraction, Research, and Reverse Engineering
 
-This project brings together tools, research, format specifications, and reverse-engineering environments for LEGO games within the [RemakeEngine](https://github.com/yggdrasil-au/RemakeEngine) ecosystem. For now, its purpose is extraction, research, and reverse engineering. A playable remake or replacement game runtime is outside the current scope.
+This project brings together tools, research, format specifications, and reverse-engineering environments for LEGO games within the [RemakeEngine](https://github.com/yggdrasil-au/RemakeEngine) ecosystem. For now, its purpose is extraction, research, and reverse engineering
 
 ---
 
@@ -35,24 +35,6 @@ Historical and non-TT LEGO titles across diverse genres: Silicon Dreams Studio (
 
 ---
 
-## Active Game Module: LEGO Harry Potter
-
-Situated in [`Games/Lego_Harry_Potter/`](Games/Lego_Harry_Potter/Readme.md), this active sub-module hosts:
-- **PlayStation 3 Original Dumps:**
-  - `Source/Orginals/PS3/LEGO Harry Potter - Years 1-4 (...) (v01.02)` [BLES-00720]
-  - `Source/Orginals/PS3/LEGO Harry Potter - Years 1-4 (...) (v03.01)` [BLES-00720]
-  - `Source/Orginals/PS3/LEGO Harry Potter - Years 5-7 (...)` [BLES-01348]
-- **Steam PC Collection Edition (2024 Remaster):**
-  - `Source/Collection/Main/` (Launcher bootstrap `LHPC.exe`, `HarryLauncher.exe`, `launcher.pkdwin`)
-  - `Source/Collection/Years 1-4/` (`harry1.exe`, `harry1*.datwin`, `shaderblob_pc.blob`)
-  - `Source/Collection/Years 5-7/` (`harry2.exe`, `harry2*.datwin`, `harry2_shaderblob_pc.blob`)
-- **Reverse Engineering Assistant (REA):**
-  - Located at [`Games/Lego_Harry_Potter/Source/Orginals/PS3/REA/`](Games/Lego_Harry_Potter/Source/Orginals/PS3/REA/guide.md), mirroring the Simpsons REA reference architecture. Contains Ghidra project structure (`LHP.gpr`), analysis guide, executable reports, and turn ledgers in `TMP/`.
-- **Inspection Utilities:**
-  - [`reversing/tools/InspectDatwin.ps1`](Games/Lego_Harry_Potter/reversing/tools/InspectDatwin.ps1) — High-speed PowerShell/C# scanner validating `datwin` trailing TOC invariants and file entries.
-  - [`reversing/tools/InspectPakDat.ps1`](Games/Lego_Harry_Potter/reversing/tools/InspectPakDat.ps1) — Header inspector for PS3 `PakDat v1.01` volumes.
-
----
 
 ## Project Layout
 
