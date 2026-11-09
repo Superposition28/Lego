@@ -80,12 +80,12 @@ In `NuFileStreamDat::Read` (`VA 0x1405367A0` / `File 0x535BA0`), the engine disp
 
 Every `GAME*.DAT` volume on PlayStation 3 (`GAME.DAT` through `GAME6.DAT` in Years 1-4; `GAME.DAT` and `GAME0.DAT` through `GAME8.DAT` in Years 5-7) and Xbox 360 (`GAME.DAT` through `GAME6.DAT`) is a **standalone, self-contained `PakDat v1.01` archive** with its own trailing Table of Contents, directory tree, string table, and hash index.
 
-### 2.1 Header Structure (`0x00..0x33`)
+### 2.1 Header Structure (`0x00..0x38`)
 ```c
 struct PakDatHeader {
     int32_t  RawTocOffset; // [0x00..0x03] Signed TOC offset (byte offset if >= 0; negated 256-byte sector index if < 0)
     uint32_t TocSize;      // [0x04..0x07] Exact byte length of trailing TOC block
-    char     Signature[44];// [0x08..0x33] "BEGIN_APP_ID_STRINGPakDat v1.01END_APP_ID_STRING\0"
+    char     Signature[49];// [0x08..0x38] "BEGIN_APP_ID_STRINGPakDat v1.01END_APP_ID_STRING\0"
 };
 ```
 - **`>= 2 GB` Negative Sector-Shifted Offset Formula (verified at `VA 0x14052E0D9` in `harry1.exe`):**
@@ -172,8 +172,10 @@ In `Source/Orginals/The Experience Disc Version 5.5 (Xbox 360)/The.Experience.Di
 ## 4. The Launcher Package Format (`.pkiwin` + `.pkdwin`)
 
 In `Source/Collection/Main`, the launcher application uses a paired index/data packaging system:
-- **`launcher.pkiwin` (Package Index):** `6,432` bytes (`268` records of `24` bytes).
+- **`launcher.pkiwin` (Package Index):** `6,432` bytes: a 12-byte header, `401` records of `16` bytes, and a four-byte zero trailer. Each record stores unpacked size, stored size, absolute data offset, and an unresolved identifier/hash. The earlier 268-by-24 interpretation was incorrect.
 - **`launcher.pkdwin` (Package Data):** `44,304,841` bytes containing sequential RFC 1950 zlib streams (`0x785E` header).
+
+The 2026-11-08 Lua extraction decoded all 401 streams and checked their output lengths. One eight-byte gap precedes record 292; the other spans are contiguous after the 12-byte data header. See the [cross-reference container study](../../../cross-reference/Containers.md) for the corrected layouts, evidence and limitations, and [reproduction commands](../../../cross-reference/Evidence-and-commands.md) for the MoonSharp workflow.
 
 ---
 

@@ -17,6 +17,10 @@ The project is architected around two core organizational principles:
 
 ## Research Documentation Directory
 
+### [Supplied TT builds: cross-reference research](research/cross-reference/README.md)
+
+Verified archive inventories, Windows extraction, decoded file-family samples, reproducible MoonSharp CLI commands, and unresolved questions for the supplied Batman 2 and Harry Potter builds. This evidence-scoped study includes the Xbox demo and distinguishes shared signatures from unproven format compatibility.
+
 ### [Traveller's Tales (TT Games)](research/Developers/Travellers_Tales/README.md)
 The primary focus of this project, covering the history, NuP/TT Engine evolution (Gen 1 through modern NTT/Collection remasters), and individual title research:
 - [**LEGO Harry Potter**](research/Developers/Travellers_Tales/Lego_Harry_Potter/README.md) — *Years 1–4* (2010), *Years 5–7* (2011), and the *2024 Collection Remaster*.

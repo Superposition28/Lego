@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Traveller's Tales (TT Games) Shared Architecture - Combined Files Architecture</title>
+    <link rel="stylesheet" href="../style/main.css">
+</head>
+<body class="doc-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+        <a href='#home'>Documentation</a><span>/</span>Files
+    </nav>
+    <h1>Traveller's Tales (TT Games) Shared Architecture — Game Files &amp; Combined Directory Architecture</h1>
+<aside class="source-notice"><p><strong>Architecture Concept:</strong> Unified representation of Source and Extracted Archive Data</p></aside>
+<section class="doc-overview">
+    <h2>The Combined Virtual Filesystem Concept</h2>
+    <p>In retail distributions of TT Games titles, game assets are packed inside monolithic or multi-slice archive volumes (<code>GAME*.DAT</code>, <code>INSTALL*.DAT</code>, or <code>*.datwin</code>) or stored directly in the Xbox XDVDFS partition (in <em>LSW1</em> and <em>LSW2</em> Xbox/Xbox 360). This documentation presents the game's file structure using a <strong>combined virtual filesystem</strong> where archive packages are transparently replaced by their extracted directory trees.</p>
+    <h2>1. Traveller's Tales Engine Architecture Evolution (2005–2024)</h2>
+    <div class="table-scroll"><table class="format-counts">
+    <thead><tr><th>Generation</th><th>Engine Codename</th><th>Years</th><th>Titles</th><th>Key Container &amp; Format Signatures</th></tr></thead>
+    <tbody>
+    <tr><td><strong>Era 1</strong></td><td>Nu2 / <code>NUP</code> Engine</td><td>2005</td><td><em>LEGO Star Wars: The Video Game</em></td><td><code>GAME.DAT</code> TOC <code>v-1</code> (PS2 <code>RNC\x02</code>); loose <code>.nux</code>/<code>.hgx</code>/<code>.ani</code>/<code>.bsa</code> on Xbox; <code>.nup</code>/<code>.hgp</code> on PC/GCN.</td></tr>
+    <tr><td><strong>Era 2</strong></td><td>Nu2 / <code>PC.GHG</code> Classic</td><td>2006–2008</td><td><em>LSW2</em>, <em>TCS</em>, <em>Indiana Jones 1</em>, <em>Batman 1</em></td><td><code>GAME.DAT</code> TOC <code>v-1</code>..<code>v-3</code>; <code>.gsc</code>/<code>.ghg</code> (<code>NU20</code> v<code>0x28</code>..<code>0x40</code>), <code>.an3</code>, <code>.cu2</code>, <code>.fpk</code> (<code>RFPK</code>); <code>360_exlist</code> on Xbox 360.</td></tr>
+    <tr><td><strong>Era 3a–3c</strong></td><td>NXG Engine (<em>Creator</em> / <em>Builder</em> / <em>Gotham</em>)</td><td>2009–2014</td><td><em>Indy 2</em>, <em>HP 1–4</em>, <em>Clone Wars</em>, <em>PotC</em>, <em>HP 5–7</em>, <em>Batman 2</em>, <em>LOTR</em>, <em>Marvel 1</em>, <em>Hobbit</em></td><td>57-byte <code>PakDat v1.01</code>/<code>v1.02</code> (TOC <code>v-4</code>/<code>v-5</code>, <code>LZ2K</code>); <code>.CC4</code>+<code>HSER</code>+<code>02UN</code> resources; <code>StreamInfo</code> <code>.cd</code>/<code>.cpd</code>/<code>.as</code>/<code>.apj</code>/<code>.led</code>; <code>.dno</code>, <code>.giz</code>, <code>.sf</code>, <code>.sub</code> (from <em>Batman 2</em>).</td></tr>
+    <tr><td><strong>Era 4a–4b</strong></td><td>DX11 / <em>Cinema</em> / <em>TFA</em> Engine</td><td>2014–2019</td><td><em>Batman 3</em>, <em>Jurassic World</em>, <em>LEGO Dimensions</em>, <em>Avengers</em>, <em>TFA</em>, <em>LEGO Worlds</em>, <em>Marvel 2</em>, <em>DC Super-Villains</em></td><td>Split <code>.HDR</code> + <code>.DAT</code> (TOC <code>v-6</code>..<code>v-12</code>, 12B <code>NameNodes</code>, <code>DFLT</code>, <code>CMP2</code> LZMA, <code>.CC40TAD</code>); compiled Lua 5.1 (<code>.lua</code>); <code>.cu3</code>; NFC <code>.bin</code>/<code>.por</code>/<code>.ats</code> in <em>Dimensions</em>; <code>.lxfml</code> in <em>Worlds</em>.</td></tr>
+    <tr><td><strong>Era 5</strong></td><td>NTT Engine</td><td>2022</td><td><em>LEGO Star Wars: The Skywalker Saga</em></td><td><code>.CC40TAD</code> TOC <code>v-12</code> with 64-bit FNV-1a hashes and Oodle Mermaid (<code>OODL</code>) compression.</td></tr>
+    <tr><td><strong>Remaster</strong></td><td>Double Eleven DX11 x64</td><td>2016–2024</td><td><em>LEGO Harry Potter Collection</em> (PS4 / Switch / PC Steam)</td><td><code>.datwin</code> (TOC <code>v-1</code> with 24B entries, <code>0x12345678</code> canary, <code>LZHAM</code>) + <code>.pkiwin</code>/<code>.pkdwin</code> (zlib).</td></tr>
+    </tbody>
+    </table></div>
+
+    <h2>2. Cross-Game Format Census Across Inspected Archives</h2>
+    <p>Empirical file counts measured directly from extracted TOCs and disc images across six inspected titles:</p>
+    <div class="table-scroll"><table class="format-counts">
+    <thead><tr><th>Format / Extension</th><th>Subsystem</th><th>LSW1 (2005 Xbox/PS2)</th><th>LSW2 (2006 PS2/Xbox/X360)</th><th>HP 1–4 (2010 PS3/X360/PC)</th><th>HP 5–7 (2011 PS3/X360/PC)</th><th>Batman 2 (2012 WinSteam)</th><th>Dimensions (2015 PS3)</th></tr></thead>
+    <tbody>
+    <tr><td><code>.gsc</code> / <code>.nux</code> / <code>.nx2</code></td><td>Scene Geometry</td><td>259 (<code>.nux</code>) + 18 (<code>.nus</code>)</td><td>448 (PS2) / 474 (<code>.nx2</code>) / 500 (X360)</td><td>610</td><td>436</td><td>816</td><td>1,445</td></tr>
+    <tr><td><code>.ghg</code> / <code>.hgx</code> / <code>.hx2</code></td><td>Skeletal Models</td><td>163 (<code>.hgx</code>)</td><td>255 (PS2) / 261 (<code>.hx2</code>) / 254 (X360)</td><td>1,455</td><td>1,246</td><td>2,265</td><td>7,414</td></tr>
+    <tr><td><code>.tex</code> / <code>.nxg_textures</code></td><td>Standalone Textures</td><td>Inline in <code>.nux</code>/<code>.hgx</code></td><td>Inline in <code>.gsc</code>/<code>.ghg</code></td><td>4,487</td><td>3,395</td><td>4,715</td><td>14,209</td></tr>
+    <tr><td><code>.an3</code> / <code>.ca3</code> / <code>.ani</code> / <code>.anm</code></td><td>Animations</td><td>973 (<code>.ani</code>)</td><td>2,440 (<code>.an3</code>) / 26 (<code>.ca3</code>)</td><td>1,612 (<code>.anm</code>/<code>.an3</code>)</td><td>2,180</td><td>213 (<code>.anm</code>)</td><td>19,580 (<code>.an3</code>)</td></tr>
+    <tr><td><code>.bsa</code> / <code>.anl</code></td><td>Era 1–2 Blend / Lists</td><td>679 (<code>.bsa</code>)</td><td>1,999 (<code>.bsa</code>) + 184 (<code>.anl</code>)</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td><code>.cd</code> / <code>.cpd</code> / <code>.as</code> / <code>.apj</code></td><td><code>StreamInfo</code> Character</td><td>—</td><td>—</td><td>1,120+</td><td>1,340+</td><td>1,671</td><td>7,068</td></tr>
+    <tr><td><code>.led</code></td><td><code>StreamInfo</code> Level Entities</td><td>—</td><td>—</td><td>890</td><td>740</td><td>564</td><td>2,616</td></tr>
+    <tr><td><code>.dno</code></td><td>Dynamic Brick Objects</td><td>—</td><td>—</td><td>6,858</td><td>5,204</td><td>3,240</td><td>17,672</td></tr>
+    <tr><td><code>.giz</code> / <code>.git</code></td><td>Gizmos &amp; Camera Options</td><td>—</td><td>—</td><td>1,210</td><td>980</td><td>1,012</td><td>3,643</td></tr>
+    <tr><td><code>.ter</code> / <code>.ctr</code></td><td>Terrain Collision Octree</td><td>149</td><td>140 (<code>.ter</code>) / 179 (<code>.ctr</code>)</td><td>312</td><td>245</td><td>564</td><td>1,148</td></tr>
+    <tr><td><code>.rtl</code></td><td>Runtime Light Lists</td><td>163</td><td>156 (PS2) / 178 (X360)</td><td>305</td><td>240</td><td>524</td><td>1,123</td></tr>
+    <tr><td><code>.ai2</code> / <code>.aib</code></td><td>AI Navigation Mesh</td><td>120 (<code>.ai2</code>)</td><td>45 (<code>.ai2</code>)</td><td>195 (<code>.ai2</code>)</td><td>160 (<code>.ai2</code>)</td><td>85 (<code>.ai2</code>) + 284 (<code>.aib</code>)</td><td>856 (<code>.aib</code>)</td></tr>
+    <tr><td><code>.scp</code> / <code>.sf</code> / <code>.lua</code></td><td>Gameplay Scripts</td><td>500 (<code>.scp</code>)</td><td>525 (<code>.scp</code>)</td><td>1,405 (<code>.scp</code>) + 677 (<code>.sf</code>)</td><td>412 (<code>.scp</code>) + 4,296 (<code>.sf</code>)</td><td>324 (<code>.scp</code>) + 5,274 (<code>.sf</code>)</td><td>9,858 (<code>.lua</code>) + 222 (<code>.sf</code>)</td></tr>
+    <tr><td><code>.cut</code> / <code>.cu2</code> / <code>.cc2</code> / <code>.cu3</code></td><td>Cutscene Timelines</td><td>184 (<code>.cut</code>)</td><td>76 (<code>.cu2</code> / <code>.cc2</code>)</td><td>401 (<code>.cu2</code>)</td><td>250 (<code>.cu2</code>)</td><td>245 (<code>.cu2</code>)</td><td>190 (<code>.cu3</code>)</td></tr>
+    <tr><td><code>.sub</code></td><td>Voice Subtitles</td><td>—</td><td>—</td><td>—</td><td>—</td><td>2,408</td><td>15,826</td></tr>
+    <tr><td><code>.por</code> / <code>.ats</code> / NFC <code>.bin</code></td><td>Dimensions Toy Pad</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>644 (<code>.por</code>) + 1,497 (<code>.ats</code>) + 47 (<code>.bin</code>)</td></tr>
+    </tbody>
+    </table></div>
+    <h2>Core Subsystem Directory Tree</h2>
+    <div class="table-scroll"><table class="format-counts">
+    <thead><tr><th>Virtual Directory</th><th>Subsystem Role</th><th>Primary File Types</th></tr></thead>
+    <tbody>
+    <tr><td><code>audio/</code> / <code>IOP/</code></td><td>Voice streams, soundtrack music, sound effect dictionaries, and audio bus curves.</td><td><code>.msf</code>, <code>.xma</code>, <code>.ogg</code>, <code>.vag</code>, <code>.wavx</code>, <code>.cfg</code>, <code>.sfx</code></td></tr>
+    <tr><td><code>chars/</code></td><td>Minifigures, creatures, vehicles, character definitions, and animations.</td><td><code>.ghg</code>/<code>.hgx</code>/<code>.hx2</code>, <code>.cd</code>, <code>.cpd</code>, <code>.as</code>, <code>.an3</code>/<code>.ani</code>/<code>.anm</code>, <code>.bsa</code>, <code>.tex</code></td></tr>
+    <tr><td><code>levels/</code></td><td>Story chapters, hub worlds, collision octrees, runtime lights, and level scripts.</td><td><code>.gsc</code>/<code>.nux</code>/<code>.nx2</code>, <code>.ter</code>/<code>.ctr</code>, <code>.rtl</code>, <code>.dno</code>, <code>.led</code>, <code>.giz</code>, <code>.git</code>, <code>.scp</code>, <code>.sf</code>, <code>.lua</code></td></tr>
+    <tr><td><code>cut/</code></td><td>In-engine cutscene choreography, actor staging, camera switching, and subtitle timings.</td><td><code>.cut</code>, <code>.cu2</code>/<code>.cc2</code>, <code>.cu3</code>, <code>.sub</code></td></tr>
+    <tr><td><code>gui/</code> / <code>framework-data/</code></td><td>Menu pages, pause screens, HUD stud counters, button prompts, and font sheets.</td><td><code>.ft2</code>, <code>.gip</code>, <code>.gix</code>, <code>.gil</code>, <code>.tex</code></td></tr>
+    <tr><td><code>stuff/</code></td><td>Global configuration, gameplay constants, particle templates, splines, and localization tables.</td><td><code>text.csv</code>, <code>game.txt</code>, <code>levels.txt</code>, <code>.ptl</code>, <code>.par</code>, <code>.spl</code></td></tr>
+    <tr><td><code>scripts/</code> / <code>ai/</code></td><td>Global mission scripting, AI navigation graphs, and Lua bytecode packages.</td><td><code>.ai2</code>, <code>.aib</code>, <code>.scp</code>, <code>.sf</code>, <code>.lua</code>, <code>ai.pak</code></td></tr>
+    <tr><td><code>movies/</code> / <code>FMV/</code></td><td>Pre-rendered FMVs, company logos, attract mode gameplay reels, and end credits.</td><td><code>.fmv</code>, <code>.bik</code>, <code>.pam</code>, <code>.pss</code>, <code>.xmv</code></td></tr>
+    </tbody>
+    </table></div>
+</section>
+<h2>Platform Implementations</h2>
+<ul>
+    <li><a href="PS3/index.html">PlayStation (PS2 &amp; PS3) Combined Filesystem</a></li>
+    <li><a href="Xbox_360/index.html">Xbox (Original Xbox &amp; Xbox 360) Combined Filesystem</a></li>
+    <li><a href="PC/index.html">PC (Windows Retail &amp; Steam Remaster) Combined Filesystem</a></li>
+</ul>
+</body>
+</html>

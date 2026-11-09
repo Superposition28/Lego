@@ -1,6 +1,28 @@
 
-[submodule "Games/LegoHarryPotter"]
+
+
+
+[submodule "LegoBatman"]
+    path = Games/Lego_Batman
+    #url = https://github.com/Superposition28/Lego_Batman.git
+[submodule "LegoDimensions"]
+    path = Games/Lego_Dimensions
+    #url = https://github.com/Superposition28/Lego_Dimensions.git
+[submodule "LegoHarryPotter"]
     path = Games/Lego_Harry_Potter
     url = https://github.com/Superposition28/Lego_Harry_Potter.git
-
-
+[submodule "Lego_Indiana_Jones"]
+    path = Games/Lego_Indiana_Jones
+    #url = https://github.com/Superposition28/Lego_Indiana_Jones.git
+[submodule "Lego_Marvel_Super_Heroes"]
+    path = Games/Lego_Marvel_Super_Heroes
+    #url = https://github.com/Superposition28/Lego_Marvel_Super_Heroes.git
+[submodule "Lego_Pirates_of_the_Caribbean"]
+    path = Games/Lego_Pirates_of_the_Caribbean
+    #url = https://github.com/Superposition28/Lego_Pirates_of_the_Caribbean.git
+[submodule "Lego_Star_Wars"]
+    path = Games/Lego_Star_Wars
+    #url = https://github.com/Superposition28/Lego_Star_Wars.git
+[submodule "Lego_Worlds"]
+    path = Games/Lego_Worlds
+    #url = https://github.com/Superposition28/Lego_Worlds.git

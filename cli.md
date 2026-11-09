@@ -4,7 +4,7 @@ This reference adapts the Simpsons module's CLI workflow for the LEGO research p
 
 ## Current Availability
 
-The LEGO parent's `operations.toml` is empty and `operations/` contains no scripts yet. There is no extraction command to run at present. Operation and script examples below are templates for future work, not working LEGO operations. No registry module ID is assumed.
+The LEGO parent's `operations.toml` is empty. Shared Lua archive research now lives in `operations/`, with runnable entry scripts and manifests in `Games/Lego_Batman` and `Games/Lego_Harry_Potter`. Their inventory and Windows extraction workflows are documented in [Research/cross-reference/Evidence-and-commands.md](research/cross-reference/Evidence-and-commands.md). Use the respective game context; the parent examples below remain generic templates. No numeric registry module ID is assumed.
 
 ## Engine Discovery
 
@@ -22,7 +22,7 @@ Once the engine recognizes the target module, inspect its available operations:
 dotnet run -c Debug --project .\EngineNet\ -- --list-ops '.\EngineApps\Games\Lego'
 ```
 
-An empty manifest does not establish a usable module. Check engine discovery and manifest requirements before interpreting a failure. Nested module discovery and module dependencies are planned in [TODO.md](TODO.md); folder placement alone does not establish support.
+An empty manifest does not establish a usable module. The 2026-11-08 research runs verified nested discovery and execution by the names `Lego_Harry_Potter` and `Lego_Batman`. Explicit nested-path operation listing failed in that checkout; use the discovered names shown in the linked commands. Automatic inter-module dependency installation remains unverified; folder placement alone does not establish it.
 
 ## Operation and Script Templates
 
