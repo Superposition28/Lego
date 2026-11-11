@@ -771,3 +771,16 @@ iframe.page { top: var(--nav-height); height: calc(100dvh - var(--nav-height)); 
 .usrdir-tree-page .unique { color: #56d879; }
 .usrdir-tree-page .empty { color: #ff7b72; }
 .usrdir-tree-page .unknown { color: #b0bac5; }
+
+/* LEGO Multi-Column Specification & Census Table Fixes */
+.format-counts th,
+.format-counts td {
+    overflow-wrap: normal;
+    word-break: normal;
+    vertical-align: top;
+}
+.format-counts tr > th:nth-child(n+3):last-child,
+.format-counts tr > td:nth-child(n+3):last-child {
+    text-align: left;
+    white-space: normal;
+}

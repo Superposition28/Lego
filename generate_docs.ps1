@@ -7,6 +7,21 @@ param(
 $ErrorActionPreference = "Stop"
 
 $CssContent = Get-Content -LiteralPath $SimpsonsCssPath -Raw -Encoding utf8
+$CssContent += @"
+
+/* LEGO Multi-Column Specification & Census Table Fixes */
+.format-counts th,
+.format-counts td {
+    overflow-wrap: normal;
+    word-break: normal;
+    vertical-align: top;
+}
+.format-counts tr > th:nth-child(n+3):last-child,
+.format-counts tr > td:nth-child(n+3):last-child {
+    text-align: left;
+    white-space: normal;
+}
+"@
 
 function Ensure-Dir([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -106,15 +121,19 @@ $DatFormats = [ordered]@{
 "@
     }
     "tsh" = @{
-        Name = ".tsh (Texture Share / Atlas Lookup Table)"
+        Name = ".tsh (NuTextureSheet / Texture Share Atlas Lookup Table)"
         Ext = ".tsh"
-        Magic = "02UN / NU20 (TSHR / RHST)"
+        Magic = "4CC.TXSH / 02UN / NU20 (TSHR / RHST)"
         Category = "Textures & Materials"
         Scope = "Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions)"
-        Desc = "Texture sharing and atlas indirection container (TSHR / RHST) mapping shared minifigure decals and common material surfaces across character packages."
+        Desc = "NuTextureSheet and texture sharing container (4CC.TXSH / TSHR / RHST) mapping FNV1UPPER hashes and UV sub-rectangles to shared minifigure decals and texture atlases."
         Details = @"
-<h2>Overview</h2>
-<p><code>.tsh</code> files use the <code>NU20</code> / <code>02UN</code> chunk container with a primary <code>TSHR</code> (LE) / <code>RHST</code> (BE) chunk to alias shared textures across multiple character or level directories without duplicating pixel data in VRAM.</p>
+<h2>Overview &amp; Structure (<code>NuTextureSheet</code> / <code>TSH.cs</code>)</h2>
+<p><code>.tsh</code> files appear in two closely related forms across Era 3–4:</p>
+<ul>
+    <li><strong><code>NU20</code> / <code>02UN</code> <code>TSHR</code> (LE) / <code>RHST</code> (BE):</strong> Aliases shared textures across character packages.</li>
+    <li><strong><code>4CC.TXSH</code> (<code>NuTextureSheet</code>):</strong> Contains a <code>NU20</code> header followed by an array of texture sheet entries mapping <code>FNV1UPPER</code> (offset basis <code>0x811C9DC5</code>, prime <code>0x199933</code>) hashes or relative <code>.tex</code> paths to UV sprite sub-rectangles for UI icons and minifigure decals.</li>
+</ul>
 "@
     }
     "an3" = @{
@@ -322,10 +341,17 @@ $DatFormats = [ordered]@{
         Magic = "GizObstacle (0x0B000000)"
         Category = "Level Design & AI"
         Scope = "Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions: 2,520 files in Dimensions)"
-        Desc = "Interactive level gizmo, lever, target, hazard volume, and puzzle trigger placement container."
+        Desc = "Interactive level gizmo container storing GizObstacle, GizBuildit, GizForce, Blowup, GizmoPickup, Lever, ZipUp, HatMachine, Plug, Tube, and Turret records."
         Details = @"
-<h2>Overview</h2>
-<p>Encodes <code>GizObstacle</code> records with 3D bounding volumes, interaction flags, and script callbacks across all Era 3 and Era 4 titles.</p>
+<h2>Overview &amp; Sub-Chunk Schema</h2>
+<p>Binary container storing interactive level gizmos per level sub-area. Each section is prefixed by a length-prefixed ASCII type identifier followed by structured placement records:</p>
+<ul>
+    <li><code>GizObstacle</code>: Interactive obstacles, gates, and hazard volumes.</li>
+    <li><code>GizBuildit</code>: Multi-brick bouncing LEGO build-it assembly spots.</li>
+    <li><code>GizForce</code>: Jedi Force / Harry Potter Wingardium Leviosa telekinesis targets.</li>
+    <li><code>Blowup</code>: Silver/Gold LEGO destructible props and stud drop tables.</li>
+    <li><code>GizmoPickup</code>, <code>Lever</code>, <code>ZipUp</code> (grapple points), <code>HatMachine</code>, <code>Plug</code>, <code>Tube</code>, and <code>Turret</code>.</li>
+</ul>
 "@
     }
     "git" = @{
@@ -341,15 +367,29 @@ $DatFormats = [ordered]@{
 "@
     }
     "dno" = @{
-        Name = ".dno (Dynamic Network Object / Breakable LEGO Prop)"
+        Name = ".dno (Pinner Dynamics Object — Physics & Collision Container)"
         Ext = ".dno"
-        Magic = "0x00000013 / 0x00B40001"
+        Magic = "SERIALISED (v20) / 0x00000013 / 0x00B40001"
         Category = "3D Graphics & Scene"
         Scope = "Era 3–4 (HP 1–4: 6,858, HP 5–7: 5,204, Batman 2: 3,240, Dimensions: 17,672)"
-        Desc = "Destructible and buildable LEGO prop meshes, physics sub-parts, and dynamic world objects."
+        Desc = "PinnerDynamicsObj physics, collision hull, joint constraint, convex mesh, and KD-terrain descriptor container for dynamic and breakable LEGO world objects."
         Details = @"
-<h2>Overview</h2>
-<p>One of the most numerous formats in Era 3–4 archives (reaching <code>17,672</code> files in <em>LEGO Dimensions</em>), representing individual breakable and buildable LEGO assemblies.</p>
+<h2>Overview &amp; 12-Section Structure (<code>PinnerDynamicsObj.cs</code>)</h2>
+<p>Verified against <code>TTGamesExplorerRebirthLib/Formats/PinnerDynamicsObj.cs</code>: <code>.dno</code> stands for <strong>Pinner Dynamics Object</strong> (named after TT Games' internal <em>Pinner</em> physics/dynamics subsystem). Version 20 files begin with the 10-byte ASCII magic <code>SERIALISED</code> + <code>uint32 Version (20)</code> followed by 12 sequential sections:</p>
+<ol>
+    <li><code>PinnerString</code> (string table)</li>
+    <li><code>PinnerMatrix</code> (4×4 transform matrices)</li>
+    <li><code>PinnerEntity</code> (dynamic rigid-body entities)</li>
+    <li><code>PinnerMesh</code> (collision triangle meshes)</li>
+    <li><code>PinnerJoint</code> (hinge/ball/slider constraints)</li>
+    <li><code>PinnerGeom</code> (primitive collision shapes)</li>
+    <li><code>PinnerSpline</code> (path constraints)</li>
+    <li><code>PinnerController</code> (kinematic controllers)</li>
+    <li><code>PinnerTileMap</code> (grid collision tiles)</li>
+    <li><code>PinnerConvexMesh</code> (convex hull polytopes)</li>
+    <li><code>KdTerrainDescriptor</code> (KD-tree spatial terrain)</li>
+    <li>Secondary <code>PinnerMesh</code> section</li>
+</ol>
 "@
     }
     "pak" = @{
@@ -375,15 +415,25 @@ $DatFormats = [ordered]@{
 "@
     }
     "cbx" = @{
-        Name = ".cbx / .cbs ( Creature / Character Brick & Procedural Sub-Data)"
+        Name = ".cbx / .cbs (ChatterBoX Voice/SFX Audio & Lip-Sync Stream)"
         Ext = ".cbx"
-        Magic = "Binary Brick Rig Data"
-        Category = "Characters & Models"
+        Magic = "!B0X (0x58304221)"
+        Category = "Audio"
         Scope = "Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions: 9,899 .cbx and 5,976 .cbs in Dimensions)"
-        Desc = "Procedural LEGO brick assembly, attachment socket, and destruction debris metadata paired with character and prop models."
+        Desc = "Proprietary 'ChatterBoX' (!B0X) EA MicroTalk-variant compressed speech/SFX audio container (.cbx, 0x1B0-sample frames) and companion phoneme/lip-sync curves (.cbs)."
         Details = @"
-<h2>Overview</h2>
-<p>Paired with <code>.ghg</code> and <code>.dno</code> assets (and packed into <code>_cbs_ps4.pak</code> in the 2024 PC remaster) to govern how characters and brick builds snap together and shatter into LEGO pieces.</p>
+<h2>Overview &amp; Binary Structure (<code>CBX.cs</code> / <code>CBXDecoder</code>)</h2>
+<p>Verified against <code>TTGamesExplorerRebirthLib/Formats/CBX.cs</code> and <code>TTModding-Docs/src/fileformats/cbx.md</code>: <code>.cbx</code> stands for <strong>ChatterBoX</strong>, a custom speech and sound-effect compression format derived from Electronic Arts' 10:1 MicroTalk codec:</p>
+<div class="table-scroll"><table class="format-counts">
+<thead><tr><th>Offset</th><th>Size</th><th>Type</th><th>Field</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td>0x00</td><td>4</td><td>Char[4]</td><td>Magic</td><td><code>!B0X</code> (<code>0x58304221</code>).</td></tr>
+<tr><td>0x04</td><td>4</td><td>Int32</td><td>Version</td><td>Format version (<code>-2</code> or <code>-3</code>).</td></tr>
+<tr><td>0x08</td><td>4</td><td>UInt32</td><td>SampleRate</td><td>Output PCM sample rate in Hz (e.g. <code>24000</code> or <code>32000</code> Hz).</td></tr>
+<tr><td>0x0C</td><td>4</td><td>UInt32</td><td>SampleCount</td><td>Total decoded 16-bit mono PCM samples (decoded in <code>0x1B0</code> = 432-sample frames via <code>SoundExpander16</code>).</td></tr>
+</tbody>
+</table></div>
+<p>Companion <code>.cbs</code> files (and <code>_cbs_ps4.pak</code> in the 2024 PC remaster) store synchronized lip-sync phoneme weights and event triggers.</p>
 "@
     }
     "res" = @{
@@ -616,7 +666,7 @@ function Build-RootFormats([string]$DocsDir, [string]$ProjectTitle, [string]$Bac
 </tbody>
 </table></div>
 "@
-    Write-HtmlFile (Join-Path $XexDir "index.html") (Get-HtmlPage "Xbox & Xbox 360 Executables (.xex / .xbe)" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Formats</a><span>/</span>.xex" $xexContent "../../style/main.css")
+    Write-HtmlFile (Join-Path $XexDir "index.html") (Get-HtmlPage "Xbox & Xbox 360 Executables (.xex / .xbe)" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span>.xex" $xexContent "../../style/main.css")
 
     # --- bin ---
     $BinDir = Join-Path $FormatsDir "bin"
@@ -645,7 +695,7 @@ function Build-RootFormats([string]$DocsDir, [string]$ProjectTitle, [string]$Bac
 </tbody>
 </table></div>
 "@
-    Write-HtmlFile (Join-Path $BinDir "index.html") (Get-HtmlPage "PlayStation Executables (.BIN / ELF)" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Formats</a><span>/</span>.bin" $binContent "../../style/main.css")
+    Write-HtmlFile (Join-Path $BinDir "index.html") (Get-HtmlPage "PlayStation Executables (.BIN / ELF)" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span>.bin" $binContent "../../style/main.css")
 
     # --- exe ---
     $ExeDir = Join-Path $FormatsDir "exe"
@@ -671,7 +721,7 @@ function Build-RootFormats([string]$DocsDir, [string]$ProjectTitle, [string]$Bac
 </tbody>
 </table></div>
 "@
-    Write-HtmlFile (Join-Path $ExeDir "index.html") (Get-HtmlPage "Windows Executables (.exe)" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Formats</a><span>/</span>.exe" $exeContent "../../style/main.css")
+    Write-HtmlFile (Join-Path $ExeDir "index.html") (Get-HtmlPage "Windows Executables (.exe)" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span>.exe" $exeContent "../../style/main.css")
 
     # --- dat (Container format) ---
     $DatDir = Join-Path $FormatsDir "dat"
@@ -746,7 +796,7 @@ function Build-RootFormats([string]$DocsDir, [string]$ProjectTitle, [string]$Bac
 }
 </code></pre>
 "@
-    Write-HtmlFile (Join-Path $DatDir "dat.html") (Get-HtmlPage "TT Games Archive Formats (.DAT / .HDR / CMP2 / .datwin)" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Formats</a><span>/</span>.dat" $datContent "../../style/main.css")
+    Write-HtmlFile (Join-Path $DatDir "dat.html") (Get-HtmlPage "TT Games Archive Formats (.DAT / .HDR / CMP2 / .datwin)" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span>.dat" $datContent "../../style/main.css")
 
     # --- datFormats child pages ---
     $DatFormatsDir = Join-Path $DatDir "datFormats"
@@ -769,7 +819,7 @@ function Build-RootFormats([string]$DocsDir, [string]$ProjectTitle, [string]$Bac
 </section>
 $($fmt.Details)
 "@
-        Write-HtmlFile (Join-Path $DatFormatsDir "$fmtKey.html") (Get-HtmlPage $fmt.Name "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../../index.html'>Formats</a><span>/</span><a href='../dat.html'>.dat</a><span>/</span>$($fmt.Ext)" $pageHtml "../../../style/main.css")
+        Write-HtmlFile (Join-Path $DatFormatsDir "$fmtKey.html") (Get-HtmlPage $fmt.Name "<a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>$($fmt.Ext)" $pageHtml "../../../style/main.css")
     }
 }
 
@@ -920,12 +970,12 @@ $customOverviewHtml
 </section>
 <h2>Platform Implementations</h2>
 <ul>
-    <li><a href="PS3/index.html">PlayStation (PS2 &amp; PS3) Combined Filesystem</a></li>
-    <li><a href="Xbox_360/index.html">Xbox (Original Xbox &amp; Xbox 360) Combined Filesystem</a></li>
-    <li><a href="PC/index.html">PC (Windows Retail &amp; Steam Remaster) Combined Filesystem</a></li>
+    <li><a href="../index.html#Files-PS3" target="_parent">PlayStation (PS2 &amp; PS3) Combined Filesystem</a></li>
+    <li><a href="../index.html#Files-Xbox360" target="_parent">Xbox (Original Xbox &amp; Xbox 360) Combined Filesystem</a></li>
+    <li><a href="../index.html#Files-PC" target="_parent">PC (Windows Retail &amp; Steam Remaster) Combined Filesystem</a></li>
 </ul>
 "@
-    Write-HtmlFile (Join-Path $FilesDir "index.html") (Get-HtmlPage "$ProjectTitle - Combined Files Architecture" "<a href='$BackUpLink'>Documentation</a><span>/</span>Files" $filesOverview "../style/main.css")
+    Write-HtmlFile (Join-Path $FilesDir "index.html") (Get-HtmlPage "$ProjectTitle - Combined Files Architecture" "<a href='../index.html#home' target='_parent'>Documentation</a><span>/</span>Files" $filesOverview "../style/main.css")
 
     # --- Files/PS3/index.html ---
     $Ps3Dir = Join-Path $FilesDir "PS3"
@@ -963,7 +1013,7 @@ $customOverviewHtml
     </div>
 </section>
 "@
-    Write-HtmlFile (Join-Path $Ps3Dir "index.html") (Get-HtmlPage "PlayStation Combined Filesystem" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Files</a><span>/</span>PS3" $ps3Content "../../style/main.css")
+    Write-HtmlFile (Join-Path $Ps3Dir "index.html") (Get-HtmlPage "PlayStation Combined Filesystem" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Files' target='_parent'>Files</a><span>/</span>PS3" $ps3Content "../../style/main.css")
 
     # --- Files/Xbox_360/index.html ---
     $X360Dir = Join-Path $FilesDir "Xbox_360"
@@ -986,7 +1036,7 @@ $customOverviewHtml
     </ul>
 </section>
 "@
-    Write-HtmlFile (Join-Path $X360Dir "index.html") (Get-HtmlPage "Xbox & Xbox 360 Combined Filesystem" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Files</a><span>/</span>Xbox_360" $x360Content "../../style/main.css")
+    Write-HtmlFile (Join-Path $X360Dir "index.html") (Get-HtmlPage "Xbox & Xbox 360 Combined Filesystem" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Files' target='_parent'>Files</a><span>/</span>Xbox_360" $x360Content "../../style/main.css")
 
     # --- Files/PC/index.html ---
     $PcDir = Join-Path $FilesDir "PC"
@@ -1007,7 +1057,7 @@ $customOverviewHtml
     </ul>
 </section>
 "@
-    Write-HtmlFile (Join-Path $PcDir "index.html") (Get-HtmlPage "PC Combined Filesystem" "<a href='$BackUpLink'>Documentation</a><span>/</span><a href='../index.html'>Files</a><span>/</span>PC" $pcContent "../../style/main.css")
+    Write-HtmlFile (Join-Path $PcDir "index.html") (Get-HtmlPage "PC Combined Filesystem" "<a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Files' target='_parent'>Files</a><span>/</span>PC" $pcContent "../../style/main.css")
 }
 
 Write-Host "Files section generators loaded." -ForegroundColor Green
@@ -1043,7 +1093,7 @@ function Build-DocsProject([string]$DocsDir, [string]$ProjectKey, [string]$Proje
     </ol>
 </section>
 "@
-    Write-HtmlFile (Join-Path $DocsDir "docs.html") (Get-HtmlPage "$ProjectTitle - Documentation Guide" "<a href='$BackUpLink'>Documentation</a><span>/</span>Guide" $docsGuideHtml "style/main.css")
+    Write-HtmlFile (Join-Path $DocsDir "docs.html") (Get-HtmlPage "$ProjectTitle - Documentation Guide" "<a href='index.html#home' target='_parent'>Documentation</a><span>/</span>Guide" $docsGuideHtml "style/main.css")
 
     # 5. Build index.html (Interactive Shell & Single-Page Application Router)
     $formatEntriesHtml = ""
