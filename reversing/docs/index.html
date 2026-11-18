@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -7,9 +7,24 @@
 </head>
 <body class="doc-page">
     <h1>LEGO Games Reversing Documentation: Developer Hub</h1>
+    <aside class="source-notice">
+        <p><strong>Documentation Hierarchy:</strong> The parent reference below combines all engine generations, variants, and cross-game censuses under one specification. Individual game modules under <code>Games/&lt;Game&gt;/reversing/docs/</code> document <strong>only</strong> the specific format versions present in that title.</p>
+    </aside>
     <p>Select a developer reference project:</p>
     <ul>
-        <li><a href="Travellers_Tales/index.html"><strong>Traveller's Tales (TT Games / TT Fusion)</strong></a> — Flagship developer of LEGO action-adventure video games since 2005 (Nu2, NXG, DX11, and NTT Engines; .DAT TOC v-1..v-12, PakDat, CMP2, datwin).</li>
+        <li><a href="Travellers_Tales/index.html"><strong>Traveller's Tales (TT Games / TT Fusion)</strong></a> — Unified cross-generation reference (Nu2, NXG, DX11, NTT, and Double Eleven Remasters; <code>.DAT</code> TOC v-1..v-12, <code>PakDat</code>, <code>CMP2</code>, <code>datwin</code>, <code>NU20</code>, and <code>HSEM</code>). Read the <a href="Travellers_Tales/docs.html">Documentation Guide &amp; Specification Standard</a> for authoring rules and detail requirements.</li>
+    </ul>
+    <h2>Per-Game Scoped Documentation Modules</h2>
+    <p>Each game submodule under <code>EngineApps/Games/Lego/Games/</code> maintains its own standalone <code>reversing/docs/index.html</code> covering only the format versions observed in that title (sufficient to implement a clean-room parser for that game without needing cross-era history):</p>
+    <ul>
+        <li><code>Games/Lego_Star_Wars/reversing/docs/index.html</code> — Classic <code>NU20</code> (LSW1 / LSW2 / TCS) and <code>GAME.DAT</code> TOC v-1..v-3.</li>
+        <li><code>Games/Lego_Indiana_Jones/reversing/docs/index.html</code> — Classic <code>NU20</code> (Indy 1) and early NXG <code>HSEM</code> v<code>0x04</code>/<code>0x05</code> (Indy 2).</li>
+        <li><code>Games/Lego_Harry_Potter/reversing/docs/index.html</code> — NXG <code>HSEM</code> v<code>0x04</code>/<code>0x05</code> (Years 1–4) &amp; v<code>0x2E</code>/<code>0x2F</code> (Years 5–7), <code>PakDat v1.01</code>, and Collection <code>.datwin</code>.</li>
+        <li><code>Games/Lego_Pirates_of_the_Caribbean/reversing/docs/index.html</code> — NXG <code>HSEM</code> v<code>0x2E</code>/<code>0x2F</code>.</li>
+        <li><code>Games/Lego_Batman/reversing/docs/index.html</code> — NXG <code>HSEM</code> v<code>0x2E</code>/<code>0x2F</code>/<code>0x30</code> and <code>PakDat v1.01</code>.</li>
+        <li><code>Games/Lego_Marvel_Super_Heroes/reversing/docs/index.html</code> — NXG <code>HSEM</code> v<code>0x30</code>.</li>
+        <li><code>Games/Lego_Dimensions/reversing/docs/index.html</code> — Era 4 <code>HSEM</code> v<code>0xA1..0xAD+</code> (<code>DXTV</code>/<code>ROTV</code>), <code>.HDR</code> + <code>CMP2</code>, and NFC Toy Tags.</li>
+        <li><code>Games/Lego_Worlds/reversing/docs/index.html</code> — Era 4 DX11 <code>HSEM</code> (<code>DXTV</code>), voxel chunks, and <code>.lxfml</code> blueprints.</li>
     </ul>
 </body>
 </html>

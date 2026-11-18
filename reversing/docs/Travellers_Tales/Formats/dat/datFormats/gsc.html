@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -11,33 +11,200 @@
         <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.gsc
     </nav>
     <h1>.gsc / .nux / .nx2 / .nus (NuScene Compiled Scene Geometry)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> 3D Graphics & Scene · <strong>Scope:</strong> Universal (All TT Engine Generations 2005–2024; .nux/.nus in LSW1 Xbox, .nx2 in LSW2 Xbox)</p></aside>
+<aside class="source-notice"><p><strong>Category:</strong> 3D Graphics &amp; Scene · <strong>Scope:</strong> Universal (All TT Engine Generations 2005–2024; <code>.nux</code>/<code>.nus</code> in LSW1 Xbox, <code>.nx2</code> in LSW2 Xbox, <code>.nup</code> in LSW1 PC/GCN; <code>_nxg.gsc</code> / <code>_dx11.gsc</code> in Era 3–4)</p></aside>
 <section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>Compiled static scene geometry, room meshes, material graphs, portal bounds, and camera splines across Classic Nu2 (.nup/.nux/.nx2) and Next-Gen NXG/DX11 (_nxg.gsc, _dx11.gsc).</p>
+    <p class="eyebrow">Cross-Generation Master Specification · TT Games Engine</p>
+    <p>Compiled static scene geometry, level rooms, architectural meshes, props, material sets, and visibility lists. This parent document combines all Traveller's Tales engine generations (Classic <code>Nu2</code> / <code>NU20</code> through Next-Gen <code>HSEM</code> <code>v0x04..0xAD+</code>) into one self-contained specification so a clean-room parser/converter can be written without external source code. Individual game documentation pages cover only the variant shipped in that game.</p>
     <dl>
-        <dt>File Extension</dt><dd><code>.gsc</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>NU20 (0x3032554E) / .CC4+HSER+02UN / GSC0</code></dd>
-        <dt>Subsystem</dt><dd>3D Graphics & Scene</dd>
-        <dt>Cross-Game Scope</dt><dd>Universal (All TT Engine Generations 2005–2024; .nux/.nus in LSW1 Xbox, .nx2 in LSW2 Xbox)</dd>
+        <dt>File Extension</dt><dd><code>.gsc</code> (plus <code>.nux</code>, <code>.nx2</code>, <code>.nus</code>, <code>.nup</code>)</dd>
+        <dt>Header Magic</dt><dd>Classic: uint32le <code>nu20_rel</code> + <code>NU20</code> (<code>0x3032554E</code>) · Next-Gen: <code>.CC4</code> / <code>HSER</code> / <code>02UN</code> + <code>HSEM</code> (<code>0x4853454D</code>)</dd>
+        <dt>Subsystem</dt><dd>3D Environment &amp; Room Scene Geometry</dd>
+        <dt>Endianness</dt><dd>Classic <code>NU20</code>: Little-Endian (PC) / Big-Endian (Console). Next-Gen <code>HSEM</code>: Big-Endian chunk/index streams across all platforms; float32 vertex positions may be Little-Endian (PC) or Big-Endian (Console).</dd>
     </dl>
 </section>
-<h2>Overview &amp; Engine Evolution</h2>
-<p>The <code>.gsc</code> (Game Scene / NuScene) family is the primary static environment and background geometry container across Traveller's Tales LEGO titles:</p>
-<ul>
-    <li><strong>Era 1 (LSW1 2005):</strong> Stored as <code>.gsc</code> on PS2 (wrapped in <code>RNC\x02</code> compression), <code>.nux</code> / <code>.nus</code> on Original Xbox (raw <code>GSC0</code> + <code>VERS</code> chunks), and <code>.nup</code> on PC/GameCube.</li>
-    <li><strong>Era 2 (LSW2 2006 – Indy 1 2008):</strong> Stored as <code>.gsc</code> on PS2/PC/Xbox 360 and <code>.nx2</code> on Original Xbox. Begins with little-endian <code>NU20</code> or big-endian <code>02UN</code> chunk streams (<code>INFO</code>, <code>NTBL</code>, <code>TST0</code>, <code>MSH0</code>, <code>MTL0</code>, <code>SPEC</code>).</li>
-    <li><strong>Era 3–4 (NXG &amp; DX11, 2008–2019):</strong> Stored with platform suffixes (<code>_nxg.gsc</code>, <code>_wii.gsc</code>, <code>_dx11.gsc</code>). Wrapped in a FourCC resource container (<code>.CC4</code> / <code>4CC.</code> + <code>HSER</code> / <code>RESH</code>) embedding an inner <code>NU20</code> / <code>02UN</code> scene payload and followed by an out-of-band <code>StreamInfo</code> display-list and vertex/index buffer stream.</li>
-</ul>
-<h2>Binary Structure (Era 3–4 NXG / DX11 Container)</h2>
+
+<nav class="page-toc" aria-label="Contents">
+    <ul>
+        <li><a href="#evolution">1. Engine Generations &amp; Variants</a></li>
+        <li><a href="#nu20">2. Classic NU20 Scene Layout (Era 1–2)</a></li>
+        <li><a href="#hsem">3. Next-Gen HSEM Room Mesh Stream (Era 3–4)</a></li>
+        <li><a href="#attributes">4. Vertex Attributes, Endian Detection &amp; Winding</a></li>
+        <li><a href="#pseudocode">5. Complete Standalone Pseudocode</a></li>
+    </ul>
+</nav>
+
+<h2 id="evolution">1. Engine Generations &amp; Container Evolution</h2>
+<div class="table-scroll"><table class="format-counts">
+<thead><tr><th>Era</th><th>Representative Titles</th><th>Container &amp; Version</th><th>Scene-Specific Characteristics</th></tr></thead>
+<tbody>
+<tr><td><strong>Era 1 (2005)</strong></td><td><em>LSW1</em></td><td><code>.gsc</code> (PS2 <code>RNC\x02</code>), <code>.nux</code>/<code>.nus</code> (Xbox), <code>.nup</code> (PC/GCN)</td><td>Early Nu2 chunked scene containers (<code>GSC0</code> + <code>VERS</code> / <code>NU20</code>) with inline textures and room display lists.</td></tr>
+<tr><td><strong>Era 2 (2006–2008)</strong></td><td><em>LSW2</em>, <em>TCS</em>, <em>Indy 1</em>, <em>Batman 1</em></td><td>Pre-<code>NU20</code> GPU buffers + <code>NU20</code> <code>GSNH</code> (<code>v0x28..0x40</code>)</td><td>Embedded <code>DDS </code> textures (including 6-face cubemaps), <code>n_groups</code> display groups referencing 16-byte <code>0x82</code> draw commands and 56-byte draw descriptors.</td></tr>
+<tr><td><strong>Era 3a (2009–2011)</strong></td><td><em>Indy 2</em>, <em>HP 1–4</em>, <em>Clone Wars</em></td><td><code>.CC4</code> + <code>HSER</code> + <code>02UN</code> + <code>HSEM</code> (<code>v0x04</code>, <code>v0x05</code>)</td><td>Explicit <code>vb_count</code>, 16×2B vertex declarations (<code>sequential_if_zero = true</code>), 8-byte trailers, frequent <code>unk1 != 0</code> depth/shadow passes.</td></tr>
+<tr><td><strong>Era 3b (2011–2012)</strong></td><td><em>PotC</em>, <em>HP 5–7</em>, <em>Batman 2</em></td><td><code>.CC4</code> + <code>HSER</code> + <code>02UN</code> + <code>HSEM</code> (<code>v0x2E</code>, <code>v0x2F</code>)</td><td>Large multi-mesh rooms (200–500+ submeshes) sharing pooled VBs/IBs via <code>0xC000xxxx</code> back-references; <code>n_attr * 3B</code> decls; 44-byte trailers.</td></tr>
+<tr><td><strong>Era 3c (2012–2014)</strong></td><td><em>Batman 2</em>, <em>LOTR</em>, <em>Marvel 1</em>, <em>Hobbit</em></td><td><code>.CC4</code> + <code>HSER</code> + <code>02UN</code> + <code>HSEM</code> (<code>v0x30</code>)</td><td><code>n_attr * 3B</code> declarations; 76-byte post-mesh trailers; split <code>vb0</code>/<code>vb1</code> vertex streams (<code>UByteN4</code> normals, <code>Half2</code>/<code>Float2</code> UVs).</td></tr>
+<tr><td><strong>Era 4 (2014–2019)</strong></td><td><em>Dimensions</em>, <em>Worlds</em></td><td><code>.CC4</code> + <code>HSER</code> + <code>02UN</code> + <code>HSEM</code> (<code>v0xA1..0xAD+</code>)</td><td>Optional <code>ROTV</code> / <code>ver &gt;= 0xAD</code> header word; <code>DXTV</code> + <code>desc_ver</code> + 6-byte trailer declarations; empty locator <code>.gsc</code> files with <code>mesh_count == 0</code>.</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="nu20">2. Classic <code>NU20</code> Scene Geometry (Era 1–2)</h2>
 <div class="table-scroll"><table class="format-counts">
 <thead><tr><th>Offset</th><th>Size</th><th>Type</th><th>Field</th><th>Description</th></tr></thead>
 <tbody>
-<tr><td>0x00</td><td>4</td><td>UInt32</td><td>HeaderSize</td><td>Size of outer resource wrapper before inner <code>NU20</code> stream.</td></tr>
-<tr><td>0x04</td><td>4</td><td>UInt32</td><td>Version</td><td>Container version indicator (typically <code>1</code>).</td></tr>
-<tr><td>0x08</td><td>4</td><td>Char[4]</td><td>Magic</td><td><code>02UN</code> (BE on PS3/X360) or <code>NU20</code> (LE on PC).</td></tr>
-<tr><td>0x0C</td><td>4</td><td>Int32</td><td>Nu20Version</td><td>Engine serialization version (e.g. <code>0x46</code>..<code>0x59</code>).</td></tr>
+<tr><td><code>0x00</code></td><td>4</td><td><code>uint32le</code></td><td><code>nu20_rel</code></td><td>Offset from <code>0x04</code> to <code>"NU20"</code> (<code>nu_off = nu20_rel + 4</code>).</td></tr>
+<tr><td><code>0x04</code></td><td>2</td><td><code>uint16le</code></td><td><code>n_tex</code></td><td>Texture slot count before vertex buffers.</td></tr>
+<tr><td><code>0x06..</code></td><td>var</td><td><code>TexBlock[]</code></td><td><code>InlineDDS</code></td><td>24-byte header (<code>int32le width_signed</code> at <code>+0x00</code>, <code>uint32le dds_size</code> at <code>+0x14</code>) + <code>"DDS "</code> bytes. Cubemaps (<code>width_signed &lt; 0</code>) count as 6 slots; advance <code>24 + dds_size</code>.</td></tr>
+<tr><td>Next</td><td>var</td><td><code>VBTable</code></td><td><code>VertexBuffers</code></td><td><code>uint16le n_vb</code> records of <code>[uint32le size, uint8 data[size]]</code>. <code>n_vb == 0</code> = empty scene/locator.</td></tr>
+<tr><td>Next</td><td>var</td><td><code>IBTable</code></td><td><code>IndexBuffers</code></td><td><code>uint16le n_ib</code> records of <code>[uint32le size, uint16le indices[size / 2]]</code>.</td></tr>
+<tr><td><code>nu_off..EOF</code></td><td>var</td><td><code>NU20/GSNH</code></td><td><code>SceneGraph</code></td><td>Locate <code>"GSNH"</code>. Self-relative pointers at <code>gsnh + 280</code> yield Display Header (<code>cmd_base</code>, <code>n_groups</code>, <code>p_groups</code>). Iterate groups (or <code>0x82</code> scan) to extract 56-byte draw descriptors.</td></tr>
 </tbody>
 </table></div>
+<ul>
+    <li><strong>Group &amp; Command Chain:</strong> 12 B group at <code>goff = p_groups + g*12</code> -> <code>int32le cnt</code>, <code>+8 cmds_rel</code> -> array of <code>cmd_idx</code> into 16 B command records <code>(opcode, desc_rel, z0, z1)</code> -> 56 B draw descriptor <code>desc[0..13]</code> at <code>c_off + 4 + desc_rel</code>.</li>
+    <li><strong>56 B Descriptor &amp; Vertex Layout:</strong> <code>desc[0]</code> (<code>4/5</code>=List, <code>6</code>=Strip), <code>desc[1]=tri_cnt</code>, <code>desc[2]&amp;0xFF=stride</code> (<code>24..48</code>), <code>desc[5]=vbase</code>, <code>desc[6]=vcnt</code>, <code>desc[7]=ioff</code>, <code>desc[8]=ib_idx</code>, <code>desc[9]=vb_idx</code>. Per vertex at <code>vi*stride</code>: <code>+0x00 f32le[3]</code> pos; <code>+0x0C u8[3]</code> unsigned normal <code>(b/127.5 - 1.0)</code> when <code>stride &gt;= 24</code>; <code>+stride-8 f32le[2]</code> UV0 when <code>stride &gt;= 32</code>.</li>
+</ul>
+
+<h2 id="hsem">3. Next-Gen <code>.CC4</code> / <code>HSER</code> / <code>02UN</code> <code>HSEM</code> Scene Stream (Era 3–4)</h2>
+<div class="table-scroll"><table class="format-counts">
+<thead><tr><th>Field / Record</th><th>Offset / Rule</th><th>Exact Big-Endian Binary Encoding</th></tr></thead>
+<tbody>
+<tr><td><strong><code>HSEM</code> Header</strong></td><td>First 512 KB</td><td><code>"HSEM"</code> (4 B) + <code>uint32be ver</code> + optional 4 B (if <code>"ROTV"</code> or <code>ver &gt;= 0xAD</code>) + <code>uint32be mesh_count</code> (<code>0</code> = empty locator scene). Stream stops at first <code>"LTMU"</code>/<code>"PSID"</code>; count <code>"LOGH"</code> from <code>"PSID"</code> -> <code>n_logh = max(1, count)</code>.</td></tr>
+<tr><td><strong><code>vb_count</code> &amp; Slots</strong></td><td>Per mesh <code>p</code></td><td>Explicit <code>uint32be</code> when <code>ver &lt; 0x2E</code> or <code>HasExplicitVbc</code> matches; else <code>1</code>. <code>pres &gt;= 0x80000000</code> skips 8 B (back-ref <code>rid = pres &amp; 0xFFFF</code>); <code>pres == 0</code> skips 4 B; inline VB reads <code>flags</code>, <code>nv</code>, versioned decl (<code>16×2B</code> <code>v&lt;0x2E</code>; <code>n_attr×3B</code> <code>0x2E..0x30</code>; <code>"DXTV"+desc_ver+table+6B</code> <code>v&gt;=0xA1</code>), then <code>nv * stride</code> bytes + 4 B offset.</td></tr>
+<tr><td><strong><code>unk1</code> &amp; IB Slot</strong></td><td>After VB slots</td><td>Read <code>uint32be unk1</code>, <code>uint32be ib_pres</code>. <code>ib_pres &gt;= 0x80000000</code> skips 4 B and resolves <code>ib_pres &amp; 0xFFFF</code>; else reads <code>flags</code>, <code>ic</code>, <code>isz</code> (<code>0-&gt;2</code>) and <code>ic</code> big-endian indices. When <code>unk1 != 0</code>, skip 12 B (+0/4 align) as shadow/depth prepass.</td></tr>
+<tr><td><strong>26 B Draw Slice</strong></td><td>When <code>unk1 == 0</code></td><td><code>ioff</code> (<code>u32be</code>), <code>icnt</code> (<code>u32be</code>), <code>vbase</code> (<code>u32be</code>), <code>vcnt</code> (<code>u16be</code> @ +0x10), <code>prim_tp</code> (<code>u16be</code> @ +0x12: <code>0</code>=List, <code>1</code>=Strip), <code>blen</code> (<code>u32be</code> @ +0x16) + <code>blen</code> bytes. Trailer to next mesh: <code>8</code> B (<code>&lt;0x2E</code>), <code>44</code> B (<code>0x2E..0x2F</code>), <code>76</code> B (<code>&gt;=0x30</code>).</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="attributes">4. Vertex Attributes, Endian Detection &amp; Winding</h2>
+<ul>
+    <li><strong><code>TYPE_SIZES</code>:</strong> <code>[0, 4, 8, 12, 16, 4, 8, 4, 4, 4, 4, 2]</code>. If <code>vb0</code> lacks normals/UVs and <code>vb1.nv == vb0.nv</code>, read them from <code>vb1</code> over <code>vbase .. vbase + vcnt</code>.</li>
+    <li><strong>Types &amp; Winding:</strong> Auto-detect LE vs BE for <code>Float3/4</code> across 16 sample verts; decode <code>Half4</code>/<code>Half2</code> as IEEE-754 binary16; decode <code>UByteN4</code> normals as unsigned <code>(b / 127.5) - 1.0</code>. Slice indices <code>cur_ib[ioff : ioff + icnt]</code> are 0-based relative to <code>vbase</code> (CCW: <code>(a,b,c)</code> list; <code>(a,b,c)</code> even / <code>(b,a,c)</code> odd strip; flip to CW for Godot <code>SurfaceTool</code>). Keep LOD 0 (<code>ceil(len(submeshes) / n_logh)</code>) and deduplicate identical bounding boxes.</li>
+</ul>
+
+<h2 id="pseudocode">5. Complete Standalone Parser Pseudocode (Multi-Era <code>.gsc</code>)</h2>
+<pre><code>CONST TYPE_SIZES = [0, 4, 8, 12, 16, 4, 8, 4, 4, 4, 4, 2]
+
+function ParseGscScene(bytes):
+    prims = ParseNu20Scene(bytes)
+    if len(prims) &gt; 0: return prims
+    return ParseHsemSceneStream(bytes)
+
+function ParseNu20Scene(bytes):
+    if len(bytes) &lt; 8: return []
+    nu_off = ReadU32LE(bytes, 0x00) + 4
+    if nu_off &lt; 8 or nu_off + 8 &gt; len(bytes) or bytes[nu_off : nu_off + 4] != "NU20": return []
+    n_tex = ReadU16LE(bytes, 0x04); pos = 0x06; tex_idx = 0
+    while tex_idx &lt; n_tex and pos + 28 &lt;= nu_off:
+        if bytes[pos + 24 : pos + 28] != "DDS ": break
+        w_signed = ReadI32LE(bytes, pos); dds_size = ReadU32LE(bytes, pos + 20)
+        tex_idx += (6 if w_signed &lt; 0 else 1); pos += 24 + dds_size
+    n_vb = ReadU16LE(bytes, pos); pos += 2; vbs = []
+    for _ in 0 .. n_vb - 1: sz = ReadU32LE(bytes, pos); pos += 4; vbs.append(bytes[pos : pos + sz]); pos += sz
+    n_ib = ReadU16LE(bytes, pos); pos += 2; ibs = []
+    for _ in 0 .. n_ib - 1: sz = ReadU32LE(bytes, pos); pos += 4; ibs.append(ReadU16LEArray(bytes, pos, sz/2)); pos += sz
+    if len(vbs) == 0 or len(ibs) == 0: return []
+
+    tail = bytes[nu_off : len(bytes)]; gsnh = FindTag(tail, "GSNH")
+    if gsnh &lt; 0 or gsnh + 420 &gt; len(tail): return []
+    hdr_off  = gsnh + 280 + ReadI32LE(tail, gsnh + 280)
+    cmd_base = hdr_off + 8  + ReadI32LE(tail, hdr_off + 8)
+    n_groups = ReadI32LE(tail, hdr_off + 16); p_groups = hdr_off + 20 + ReadI32LE(tail, hdr_off + 20)
+
+    descs = []; seen_cmds = {}
+    for g_idx in 0 .. n_groups - 1:
+        goff = p_groups + g_idx * 12; cnt = ReadI32LE(tail, goff); p_cmds = goff + 8 + ReadI32LE(tail, goff + 8)
+        for k in 0 .. cnt - 1:
+            c_idx = ReadI32LE(tail, p_cmds + k * 4)
+            if c_idx in seen_cmds: continue
+            c_off = cmd_base + c_idx * 16; t_off = c_off + 4 + ReadI32LE(tail, c_off + 4)
+            desc = ReadI32LEArray(tail, t_off, 14)
+            if desc[0] in [4,5,6] and 0 &lt; desc[1] &lt; 200000 and (desc[2] &amp; 0xFF) in [24,28,32,36,40,44,48]:
+                seen_cmds.add(c_idx); descs.append(desc)
+    if len(descs) == 0:
+        for off in range(max(0, gsnh - 250000), gsnh, 4):
+            c0, rel, z0, z1 = ReadI32LEArray(tail, off, 4)
+            if c0 == 0x82 and z0 == 0 and z1 == 0 and 0 &lt; rel &lt; 200000:
+                desc = ReadI32LEArray(tail, off + 4 + rel, 14)
+                if desc[0] in [4,5,6] and 0 &lt; desc[1] &lt; 200000: descs.append(desc)
+
+    out = []; seen_ranges = {}; seen_bboxes = {}
+    for desc in descs:
+        prim_tp = desc[0]; tri_cnt = desc[1]; stride = desc[2] &amp; 0xFF
+        vbase = desc[5]; vcnt = desc[6]; ioff = desc[7]; ib_idx = desc[8]; vb_idx = desc[9]
+        if (vb_idx, vbase, vcnt, ioff) in seen_ranges: continue
+        idx_cnt = (tri_cnt + 2) if prim_tp == 6 else (tri_cnt * 3)
+        if (vbase + vcnt) * stride &gt; len(vbs[vb_idx]) or ioff + idx_cnt &gt; len(ibs[ib_idx]): continue
+        positions = [ReadF32LE3(vbs[vb_idx], vi*stride) for vi in vbase .. vbase+vcnt-1]
+        normals   = [Normalize3(vbs[vb_idx][vi*stride+12]/127.5-1.0, vbs[vb_idx][vi*stride+13]/127.5-1.0, vbs[vb_idx][vi*stride+14]/127.5-1.0) for vi in vbase .. vbase+vcnt-1] if stride &gt;= 24 else []
+        uvs       = [ReadF32LE2(vbs[vb_idx], vi*stride + stride - 8) for vi in vbase .. vbase+vcnt-1] if stride &gt;= 32 else []
+        tris      = DecodeTriangles(ibs[ib_idx][ioff : ioff + idx_cnt], vcnt, prim_tp == 6, false)
+        if len(tris) &lt; 3: continue
+        bbox = QuantizedBBoxKey(positions, vcnt, len(tris) / 3)
+        if bbox not in seen_bboxes:
+            seen_ranges.add((vb_idx, vbase, vcnt, ioff)); seen_bboxes.add(bbox)
+            out.append((positions, normals, uvs, tris))
+    return out
+
+function ParseHsemSceneStream(bytes):
+    hsem = FindTag(bytes[0 : min(len(bytes), 524288)], "HSEM")
+    if hsem &lt; 0: return []
+    buf = bytes[hsem : min(len(bytes), hsem + 16*1024*1024)]
+    p = 4; ver = ReadU32BE(buf, p); p += 4
+    if buf[p : p+4] == "ROTV" or ver &gt;= 0xAD: p += 4
+    mesh_count = ReadU32BE(buf, p); p += 4
+    if mesh_count == 0 or mesh_count &gt; 4096: return []
+
+    limit = FirstFoundTag(buf, p, "LTMU", "PSID", default=len(buf))
+    psid = FindTagFrom(buf, p, "PSID")
+    n_logh = max(1, CountTagOccurrencesFrom(buf, psid, "LOGH")) if psid &gt;= 0 else 1
+
+    all_vbs = []; all_ibs = []; rid_to_vb = {}; rid_to_ib = {}; submeshes = []
+    for m in 0 .. mesh_count - 1:
+        if p + 16 &gt; limit: break
+        vb_count = ReadU32BE(buf, p) and advance(p, 4) if HasExplicitVbc(buf, p, ver) else 1
+        vb_specs = []
+        for slot in 0 .. vb_count - 1:
+            pres = ReadU32BE(buf, p); p += 4
+            if pres &gt;= 0x80000000:
+                p += 8; vb_specs.append(("ref", slot, pres &amp; 0xFFFF))
+            elif pres != 0:
+                _flags = ReadU32BE(buf, p); nv = ReadU32BE(buf, p+4); p += 8
+                state = ParseDeclByVersion(buf, &amp;p, ver)   // 16x2B (v&lt;0x2E), n*3B (0x2E..0x30), DXTV+6B (v&gt;=0xA1)
+                vb_obj = {slot:slot, nv:nv, stride:state.stride, data_pos:p, state:state, next_vbase:0, rid:null}
+                all_vbs.append(vb_obj); vb_specs.append(("new", slot, vb_obj))
+                p += nv * state.stride + 4
+            else:
+                p += 4; vb_specs.append(("none", slot, null))
+
+        unk1 = ReadU32BE(buf, p); ib_pres = ReadU32BE(buf, p+4); p += 8; cur_ib = null
+        if ib_pres &gt;= 0x80000000:
+            p += 4; rid = ib_pres &amp; 0xFFFF
+            if rid not in rid_to_ib and len(all_ibs) &gt; 0: rid_to_ib[rid] = all_ibs[-1]
+            cur_ib = rid_to_ib.get(rid, all_ibs[-1] if len(all_ibs) &gt; 0 else null)
+        elif ib_pres != 0:
+            _ibf, ic, isz = ReadU32BEArray(buf, p, 3); p += 12
+            if isz == 0: isz = 2
+            cur_ib = ReadU16BEArray(buf, p, ic) if isz == 2 else ReadU32BEArray(buf, p, ic)
+            all_ibs.append(cur_ib); p += ic * isz
+
+        if unk1 != 0:
+            p_after = p + 12
+            if m + 1 &lt; mesh_count: p = p_after if IsHsemMeshStart(buf, p_after, ver) else p_after + 4
+            continue
+
+        ioff = ReadU32BE(buf, p); icnt = ReadU32BE(buf, p+4); vbase = ReadU32BE(buf, p+8)
+        vcnt = ReadU16BE(buf, p+16); prim_tp = ReadU16BE(buf, p+18)
+        blen = ReadU32BE(buf, p+22); if blen &gt; 256: blen = 0
+        resolved = ResolveSharedVBs(vb_specs, all_vbs, rid_to_vb, vbase, vcnt)   // exact next_vbase == vbase match
+        if vcnt &gt;= 3 and icnt &gt;= 3 and cur_ib != null and len(resolved) &gt; 0 and resolved[0] != null:
+            submeshes.append({vb0:resolved[0], vb1:(resolved[1] if len(resolved)&gt;1 else null),
+                              ib:cur_ib, vbase:vbase, vcnt:vcnt, ioff:ioff, icnt:icnt, prim_tp:prim_tp})
+
+        p_after = p + 26 + blen
+        if m + 1 &lt; mesh_count:
+            post = 76 if ver &gt;= 0x30 else (44 if ver &gt;= 0x2E else 8)
+            p = FindNextHsemStart(buf, p_after, ver, [post, 4, 8, 44, 48, 72, 76], limit)
+
+    lod0 = submeshes[0 : ceil(len(submeshes) / n_logh)]
+    return EmitDecodedHsemPrimitives(buf, lod0)</code></pre>
 </body>
 </html>

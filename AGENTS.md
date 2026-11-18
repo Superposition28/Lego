@@ -20,6 +20,14 @@ Read [TODO.md](TODO.md) as planning context. Its engine changes are pending work
 - Keep proprietary game binaries and extracted assets out of commits. Prefer synthetic examples and metadata for sharing findings.
 - Update relevant research notes and usage documentation when behavior or understanding changes.
 
+## Documentation Hierarchy and Expected Detail
+
+Format and reversing documentation in this module uses a two-tier HTML hierarchy anchored by [reversing/docs/index.html](reversing/docs/index.html):
+
+1. **Parent Shared Documentation (`reversing/docs/Travellers_Tales/`):** Combines format research across all Traveller's Tales engine generations (`Nu2`, `NXG`, `DX11`, `NTT`, and `Double Eleven` remasters), documenting all container variants, version evolutions, cross-game file censuses, and unified multi-era parsing algorithms. See [Travellers_Tales/docs.html](reversing/docs/Travellers_Tales/docs.html).
+2. **Individual Game Documentation (`Games/<Game>/reversing/docs/`):** Scoped strictly to the specific format versions, headers, and directory trees observed in **that game**. Keep references to earlier or later variants in other games minimal (pointing to the parent LEGO docs for cross-game evolution). Each game's `Formats/` specification must be sufficiently detailed to build a working parser for **that game's** files alone without needing to support other games.
+3. **Standalone Clean-Room Specification Standard:** Once a format is understood, both the parent doc and every applicable game doc must act as a complete, self-contained format specification — including exact magic values, endianness rules (including hybrid big-endian containers vs. little-endian streams), byte-offset structure tables, attribute/enum decoding formulas, edge-case filtering/deduplication rules, and step-by-step **pseudocode** — so an independent engineer can implement a functional parser/converter without seeing or needing RemakeEngine's parser code.
+
 ## Repository Boundaries
 
 The Simpsons project is a reference for workflow, not a source of LEGO format assumptions. This project does not currently have its `reversing/docs` submodule, `EngineFiles/` mirror, operation IDs, or registry module ID.
