@@ -1,4 +1,4 @@
--- Shared only for the locally validated PakDat -4 and Collection datwin -1 layouts.
+-- Shared only for the locally validated PakDat -4, MkDat -3, and Collection datwin -1 layouts.
 -- All archive integers are little endian, including PS3/Xbox 360 containers.
 ---@class TtEntry
 ---@field Index integer Zero based TOC ordinal.
@@ -22,7 +22,7 @@
 ---@field Run fun(Roots: string[], Arguments: string[]): nil
 ---@field Read fun(Path: string): TtArchive
 ---@field Hash fun(Path: string): integer
----@field Extract fun(Archive: TtArchive, Output: string, Limit: integer): integer
+---@field Extract fun(Archive: TtArchive, Output: string, Limit: integer, FilterPattern: string|nil): integer
 ---@field UInt fun(Bytes: string, Position: integer, Width: integer): integer
 ---@field Walk fun(Path: string, Files: string[]): nil
 local Research = {}
@@ -106,8 +106,11 @@ local function ReadArchive(Path)
     local Header = ReadAt(Handle, 0, math.min(57, FileSize), Path)
     assert(#Header >= 16, Path .. ": truncated archive header at 0")
     local IsPak = Header:sub(9, 57) == "BEGIN_APP_ID_STRINGPakDat v1.01END_APP_ID_STRING\0"
+    local IsMkDat = Header:sub(9, 55) == "BEGIN_APP_ID_STRINGMkDat v4.0END_APP_ID_STRING\0"
+    local IsDatContainer = IsPak or IsMkDat
+    local HeaderMinOffset = IsPak and 57 or (IsMkDat and 55 or 16)
     local TocOffset, TocSize
-    if IsPak then
+    if IsDatContainer then
         TocOffset = Signed(UInt(Header, 1, 4), 4)
         if TocOffset < 0 then TocOffset = -TocOffset * 256 end
         TocSize = UInt(Header, 5, 4)
@@ -115,22 +118,23 @@ local function ReadArchive(Path)
         assert(Path:lower():match("%.datwin$"), Path .. ": unsupported archive signature at 8")
         TocOffset, TocSize = UInt(Header, 1, 8), UInt(Header, 9, 8)
     end
-    assert(TocOffset >= (IsPak and 57 or 16) and TocSize >= 8 and TocOffset <= FileSize
+    assert(TocOffset >= HeaderMinOffset and TocSize >= 8 and TocOffset <= FileSize
         and TocSize == FileSize - TocOffset and TocSize <= 16777216, Path .. ": invalid TOC bounds at 0")
     local Toc = ReadAt(Handle, TocOffset, TocSize, Path)
     Handle.close()
     local Version, Count = Signed(UInt(Toc, 1, 4), 4), UInt(Toc, 5, 4)
-    local Stride = IsPak and 16 or 24
-    assert(Version == (IsPak and -4 or -1), Path .. ": unsupported TOC version at " .. TocOffset .. ": " .. Version)
+    local Stride = IsDatContainer and 16 or 24
+    local ExpectedVersion = IsPak and -4 or (IsMkDat and -3 or -1)
+    assert(Version == ExpectedVersion, Path .. ": unsupported TOC version at " .. TocOffset .. ": " .. Version)
     assert(Count <= math.floor((TocSize - 8) / (Stride + 4)), Path .. ": invalid entry count at " .. (TocOffset + 4))
     ---@type TtArchive
-    local Archive = {Path = Path, Kind = IsPak and "PakDat" or "datwin", Size = FileSize,
+    local Archive = {Path = Path, Kind = IsPak and "PakDat" or (IsMkDat and "MkDat" or "datwin"), Size = FileSize,
         TocOffset = TocOffset, TocSize = TocSize, Version = Version, Entries = {}}
     for Index = 0, Count - 1 do
         local Position = 9 + Index * Stride
         ---@type TtEntry
         local Entry = {Index = Index, Hash = 0, Resolution = "unresolved", Offset = 0, StoredSize = 0, Size = 0, Compression = 0}
-        if IsPak then
+        if IsDatContainer then
             Entry.Offset = UInt(Toc, Position, 4) * 256 + UInt(Toc, Position + 15, 1)
             Entry.StoredSize, Entry.Size = UInt(Toc, Position + 4, 4), UInt(Toc, Position + 8, 4)
             Entry.Compression = UInt(Toc, Position + 12, 1)
@@ -141,13 +145,13 @@ local function ReadArchive(Path)
             Entry.Compression = UInt(Toc, Position + 20, 1)
             assert(UInt(Toc, Position + 20, 4) == Entry.Compression * 0x01010101, Path .. ": unexpected datwin flags at " .. (TocOffset + Position + 19))
         end
-        assert(Entry.Offset >= (IsPak and 57 or 16) and Entry.Offset <= TocOffset
+        assert(Entry.Offset >= HeaderMinOffset and Entry.Offset <= TocOffset
             and Entry.StoredSize <= TocOffset - Entry.Offset, Path .. ": entry " .. Index .. " out of payload bounds at " .. (TocOffset + Position - 1))
         assert(Entry.Compression ~= 0 or Entry.StoredSize == Entry.Size, Path .. ": raw size mismatch for entry " .. Index)
         Archive.Entries[#Archive.Entries + 1] = Entry
     end
     local HashPosition = 9 + Count * Stride
-    if IsPak then
+    if IsDatContainer then
         local Nodes = UInt(Toc, HashPosition, 4)
         local NodeBase = HashPosition + 4
         assert(Nodes > 0 and Nodes <= math.floor((#Toc - NodeBase) / 8), Path .. ": invalid node count at " .. (TocOffset + HashPosition - 1))
@@ -155,6 +159,16 @@ local function ReadArchive(Path)
         local StringSize = UInt(Toc, StringSizePosition, 4)
         local StringBase = StringSizePosition + 4
         assert(StringSize <= #Toc - StringBase + 1 - Count * 4, Path .. ": string table exceeds TOC")
+        local HashTableStart = StringBase + StringSize
+        assert(HashTableStart + Count * 4 + 8 - 1 == #Toc, Path .. ": unexpected trailing TOC size")
+        ---@type table<integer, TtEntry>
+        local EntriesByHash = {}
+        for Index, Entry in ipairs(Archive.Entries) do
+            Entry.Hash = UInt(Toc, HashTableStart + (Index - 1) * 4, 4)
+            if not EntriesByHash[Entry.Hash] then
+                EntriesByHash[Entry.Hash] = Entry
+            end
+        end
         local Strings = Toc:sub(StringBase, StringBase + StringSize - 1)
         ---@type table<integer, string>
         local Paths = {[0] = ""}
@@ -176,19 +190,19 @@ local function ReadArchive(Path)
             Parents[Index] = Parent
             Paths[Index] = Paths[Parent] == "" and Component or Paths[Parent] .. "\\" .. Component
             if Child <= 0 then
-                local Entry = Archive.Entries[-Child + 1]
+                local LeafPath = Paths[Index]
+                local LeafHash = Hash(LeafPath)
+                local Entry = IsMkDat and EntriesByHash[LeafHash] or Archive.Entries[-Child + 1]
                 assert(Entry and not Entry.Name, Path .. ": invalid/duplicate leaf at " .. (TocOffset + Position - 1))
-                Entry.Name, Entry.Resolution = Paths[Index], "archive-name-tree"
+                assert(LeafHash == Entry.Hash, Path .. ": name/hash mismatch for entry " .. Entry.Index .. " name=" .. LeafPath .. string.format(" expected=%08X actual=%08X", Entry.Hash, LeafHash))
+                Entry.Name, Entry.Resolution = LeafPath, IsMkDat and "archive-name-tree-hash" or "archive-name-tree"
             end
         end
-        HashPosition = StringBase + StringSize
-        assert(HashPosition + Count * 4 + 8 - 1 == #Toc, Path .. ": unexpected trailing TOC size")
     else
         assert(TocSize == 8 + Count * 28, Path .. ": unexpected datwin TOC size")
-    end
-    for Index, Entry in ipairs(Archive.Entries) do
-        Entry.Hash = UInt(Toc, HashPosition + (Index - 1) * 4, 4)
-        assert(not Entry.Name or Hash(Entry.Name) == Entry.Hash, Path .. ": name/hash mismatch for entry " .. Entry.Index .. " name=" .. (Entry.Name or "") .. string.format(" expected=%08X actual=%08X", Entry.Hash, Entry.Name and Hash(Entry.Name) or 0))
+        for Index, Entry in ipairs(Archive.Entries) do
+            Entry.Hash = UInt(Toc, HashPosition + (Index - 1) * 4, 4)
+        end
     end
     return Archive
 end
@@ -221,17 +235,33 @@ end
 ---@param Archive TtArchive
 ---@param Output string
 ---@param Limit integer
+---@param FilterPattern string|nil Optional lowercase Lua pattern tested against destination name.
 ---@return integer Extracted
-local function Extract(Archive, Output, Limit)
+local function Extract(Archive, Output, Limit, FilterPattern)
     local Tool = assert(ResolveToolPath("QuickBMS", "0.12.0"), "install QuickBMS using operation -1")
     local LargeTool = Tool:gsub("quickbms%.exe$", "quickbms_4gb_files.exe")
     assert(sdk.is_file(LargeTool), "QuickBMS 64-bit-offset executable missing: " .. LargeTool)
     assert(not sdk.path_exists(Output), "extraction output already exists; choose a fresh run directory: " .. Output)
+    local MaxLz2kChunkSize = Archive.Kind == "MkDat" and 4194304 or 32768
+    ---@type TtEntry[]
+    local SelectedEntries = {}
+    for _, Entry in ipairs(Archive.Entries) do
+        local Name = SafeName(Entry.Name or string.format("__unresolved/%08X_%05d.bin", Entry.Hash, Entry.Index))
+        if not FilterPattern or Name:lower():match(FilterPattern) then
+            SelectedEntries[#SelectedEntries + 1] = Entry
+            if Limit > 0 and #SelectedEntries >= Limit then
+                break
+            end
+        end
+    end
+    if #SelectedEntries == 0 then
+        sdk.ensure_dir(Output)
+        return 0
+    end
     -- Validate chunk framing against the declared entry span before QuickBMS
     -- reads it. A damaged chunk must not consume the next archive member.
     local Source = assert(io.open(Archive.Path, "rb"))
-    for Index, Entry in ipairs(Archive.Entries) do
-        if Limit > 0 and Index > Limit then break end
+    for _, Entry in ipairs(SelectedEntries) do
         if Entry.Compression == 2 and Entry.Size > 0 then
             local Position, Total = Entry.Offset, 0
             local End = Entry.Offset + Entry.StoredSize
@@ -239,7 +269,7 @@ local function Extract(Archive, Output, Limit)
                 assert(End - Position >= 12, Archive.Path .. ": truncated LZ2K header at " .. Position)
                 local Header = ReadAt(Source, Position, 12, Archive.Path)
                 local Size, Stored = UInt(Header, 5, 4), UInt(Header, 9, 4)
-                assert(Header:sub(1, 4) == "LZ2K" and Size > 0 and Size <= 32768
+                assert(Header:sub(1, 4) == "LZ2K" and Size > 0 and Size <= MaxLz2kChunkSize
                     and Size <= Entry.Size - Total and Stored > 0 and Stored <= End - Position - 12,
                     Archive.Path .. ": invalid LZ2K chunk at " .. Position)
                 Position, Total = Position + 12 + Stored, Total + Size
@@ -263,8 +293,7 @@ local function Extract(Archive, Output, Limit)
         assert(Result.success, Archive.Path .. ": QuickBMS failed: " .. (Result.stderr or "") .. (Result.stdout or ""))
         Commands, CommandLength = {}, 0
     end
-    for _, Entry in ipairs(Archive.Entries) do
-        if Limit > 0 and Count >= Limit then break end
+    for _, Entry in ipairs(SelectedEntries) do
         local Name = SafeName(Entry.Name or string.format("__unresolved/%08X_%05d.bin", Entry.Hash, Entry.Index))
         assert(not Destinations[Name:lower()], Archive.Path .. ": duplicate Windows output path: " .. Name)
         Destinations[Name:lower()] = true
@@ -287,8 +316,7 @@ local function Extract(Archive, Output, Limit)
     end
     Flush()
     -- Check every output size; never report a raw compressed stream as an extracted asset.
-    for Index = 1, Count do
-        local Entry = Archive.Entries[Index]
+    for _, Entry in ipairs(SelectedEntries) do
         local Name = SafeName(Entry.Name or string.format("__unresolved/%08X_%05d.bin", Entry.Hash, Entry.Index))
         local Handle = assert(io.open(Output .. "/" .. Name, "rb"), "missing output: " .. Name)
         local Size = Handle.seek("end", 0)
@@ -318,7 +346,7 @@ function Research.Run(Roots, Arguments)
     ---@type table<integer, table<string, boolean>>
     local Dictionary = {}
     for _, Path in ipairs(Files) do
-        if Path:lower():match("/game%d*%.dat$") or Path:lower():match("%.datwin$") then
+        if Path:lower():match("/game%d*%.dat$") or Path:lower():match("/winsteam/.*%.dat$") or Path:lower():match("%.datwin$") then
             local Archive = Read(Path)
             Archives[#Archives + 1] = Archive
             for _, Entry in ipairs(Archive.Entries) do

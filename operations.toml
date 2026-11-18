@@ -15,3 +15,18 @@ script_type = "engine"
 script = "download-tools"
 tools_manifest = "{{Game_Root}}/Tools.toml"
 
+[[operation]]
+id = 1
+Name = "Extract All Submodules and Import 3D Assets to Godot"
+run-all = false
+depends-on = []
+script_type = "engine"
+script = "run-module-operations"
+scope = "submodules"
+target_op_id = 20
+
+[[operation.onsuccess]]
+Name = "Convert 3D Assets and Import into Godot"
+script_type = "lua"
+script = "{{Game_Root}}/operations/ExportLego3DToGodot.lua"
+

@@ -27,3 +27,9 @@ name = "ImageMagick"
 version = "7.1.2-8-Q16-HDRI"
 unpack = true
 
+[[tool]]
+name = "Godot"
+version = "4.5-stable-mono"
+unpack = true
+
+
