@@ -26,8 +26,8 @@ MAX_MESHES_PER_MODEL = 512
 MAX_VERTS_PER_PRIMITIVE = 250000
 MAX_INDICES_PER_PRIMITIVE = 750000
 MAX_HSEM_SCAN_BYTES = 512 * 1024
-MAX_HSEM_PARSE_BYTES = 16 * 1024 * 1024
-MAX_NU20_BUFFER_BYTES = 16 * 1024 * 1024
+MAX_HSEM_PARSE_BYTES = 64 * 1024 * 1024
+MAX_NU20_BUFFER_BYTES = 64 * 1024 * 1024
 IGNORED_SUBDIRS = {
     "chunk-check",
     "sample-check",
@@ -42,11 +42,12 @@ IGNORED_SUBDIRS = {
 class MeshPrimitive:
     """Single triangle primitive ready for glTF 2.0 packing."""
 
-    __slots__ = ("positions", "normals", "uvs", "indices")
+    __slots__ = ("positions", "normals", "colors", "uvs", "indices")
 
     def __init__(self) -> None:
         self.positions: list[float] = []
         self.normals: list[float] = []
+        self.colors: list[float] = []
         self.uvs: list[float] = []
         self.indices: list[int] = []
 
@@ -101,6 +102,9 @@ def accum_attr(
     elif attr_def == 1 and state["norm_type"] < 0:
         state["norm_type"] = tp
         state["norm_off"] = actual_off
+    elif attr_def == 2 and state.get("col_type", -1) < 0:
+        state["col_type"] = tp
+        state["col_off"] = actual_off
     elif attr_def == 5 and state["uv_type"] < 0:
         state["uv_type"] = tp
         state["uv_off"] = actual_off
@@ -252,18 +256,18 @@ def _decode_vb_slice(
     vb_attr: dict[str, Any] | None,
     vbase: int,
     vcnt: int,
-) -> tuple[list[float], list[float], list[float]]:
-    """Decode (positions, normals, uvs) for a sub-mesh slice vbase..vbase+vcnt."""
+) -> tuple[list[float], list[float], list[float], list[float]]:
+    """Decode (positions, normals, colors, uvs) for a sub-mesh slice vbase..vbase+vcnt."""
     nv_pos = vb_pos["nv"]
     if vcnt <= 0 or vbase < 0 or vbase + vcnt > nv_pos:
-        return [], [], []
+        return [], [], [], []
 
     keep_verts = min(vcnt, MAX_VERTS_PER_PRIMITIVE)
     st_pos = vb_pos["state"]
     stride_pos = vb_pos["stride"]
     p_pos = vb_pos["data_pos"]
     if st_pos["pos_type"] < 0:
-        return [], [], []
+        return [], [], [], []
 
     use_le = detect_little_endian_f32(
         buf,
@@ -301,6 +305,26 @@ def _decode_vb_slice(
             else:
                 normals.extend((0.0, 1.0, 0.0))
 
+    src_col_vb = vb_attr if (vb_attr is not None and vb_attr["nv"] == nv_pos and vb_attr["state"].get("col_type", -1) >= 0) else vb_pos
+    st_col = src_col_vb["state"]
+    colors: list[float] = []
+    col_tp = st_col.get("col_type", -1)
+    if col_tp in (7, 8, 9):
+        c_off = st_col["col_off"]
+        c_stride = src_col_vb["stride"]
+        c_data = src_col_vb["data_pos"]
+        if c_off + 4 <= c_stride:
+            for i in range(keep_verts):
+                co = c_data + (vbase + i) * c_stride + c_off
+                if co + 4 <= len(buf):
+                    b0, b1, b2 = buf[co], buf[co + 1], buf[co + 2]
+                    if b0 == 0 and b1 == 0 and b2 == 0:
+                        colors.extend((1.0, 1.0, 1.0))
+                    else:
+                        colors.extend((min(1.0, b0 / 127.0), min(1.0, b1 / 127.0), min(1.0, b2 / 127.0)))
+                else:
+                    colors.extend((1.0, 1.0, 1.0))
+
     src_uv_vb = vb_attr if (vb_attr is not None and vb_attr["nv"] == nv_pos and vb_attr["state"]["uv_type"] >= 0) else vb_pos
     st_uv = src_uv_vb["state"]
     uvs: list[float] = []
@@ -315,7 +339,7 @@ def _decode_vb_slice(
             uvs.append(u if math.isfinite(u) and abs(u) < 1e4 else 0.0)
             uvs.append(v if math.isfinite(v) and abs(v) < 1e4 else 0.0)
 
-    return positions, normals, uvs
+    return positions, normals, colors, uvs
 
 
 def _inv_rigid_mat4(m: tuple[float, ...]) -> tuple[list[float], list[float]]:
@@ -553,8 +577,27 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
         if not draw_groups:
             draw_groups = _collect_layers(skip_filtered=False)
 
-    # Expand resolved groups -> (desc_ints, bone_idx_or_none); otherwise fall back to group/0x82 scan
-    draw_calls: list[tuple[tuple[int, ...], int | None]] = []
+    nu_mtls: list[tuple[tuple[float, float, float], int]] = []
+    if cmd_base >= 0:
+        for ci in range(4096):
+            c_off = cmd_base + ci * 16
+            if c_off + 16 > len(tail):
+                break
+            c0, c1, _, _ = struct.unpack_from("<4i", tail, c_off)
+            if c0 == 0x8E:
+                break
+            if c0 == 0x380:
+                mo = c_off + 4 + c1
+                if 0 <= mo and mo + 0x78 <= len(tail):
+                    mr, mg, mb = struct.unpack_from("<3f", tail, mo + 0x54)
+                    mr = max(0.0, min(1.0, mr)) if math.isfinite(mr) else 1.0
+                    mg = max(0.0, min(1.0, mg)) if math.isfinite(mg) else 1.0
+                    mb = max(0.0, min(1.0, mb)) if math.isfinite(mb) else 1.0
+                    tid = struct.unpack_from("<h", tail, mo + 0x74)[0]
+                    nu_mtls.append(((mr, mg, mb), tid))
+
+    # Expand resolved groups -> (desc_ints, bone_idx_or_none, mtl_idx); otherwise fall back to group/0x82 scan
+    draw_calls: list[tuple[tuple[int, ...], int | None, int]] = []
     if draw_groups and cmd_base >= 0 and p_groups >= 0:
         seen_cmds: set[tuple[int, int | None]] = set()
         for g_idx, bone_idx in draw_groups:
@@ -564,10 +607,12 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
             cnt = struct.unpack_from("<i", tail, goff)[0]
             if cnt <= 0 or cnt > 256:
                 continue
+            p_mtls = goff + 4 + struct.unpack_from("<i", tail, goff + 4)[0]
             p_cmds = goff + 8 + struct.unpack_from("<i", tail, goff + 8)[0]
             for k in range(cnt):
                 if p_cmds + k * 4 + 4 > len(tail):
                     break
+                m_idx = struct.unpack_from("<i", tail, p_mtls + k * 4)[0] if (0 <= p_mtls and p_mtls + k * 4 + 4 <= len(tail)) else -1
                 c_idx = struct.unpack_from("<i", tail, p_cmds + k * 4)[0]
                 if (c_idx, bone_idx) in seen_cmds:
                     continue
@@ -581,7 +626,7 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
                 desc = struct.unpack_from("<14i", tail, t_off)
                 if desc[0] in (4, 5, 6) and 0 < desc[1] < 200000 and (desc[2] & 0xFF) in (24, 28, 32, 36, 40, 44, 48):
                     seen_cmds.add((c_idx, bone_idx))
-                    draw_calls.append((desc, bone_idx))
+                    draw_calls.append((desc, bone_idx, m_idx))
 
     if not draw_calls and p_groups >= 0 and cmd_base >= 0 and 0 < n_groups <= 2048:
         for g_idx in range(n_groups):
@@ -591,10 +636,12 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
             cnt = struct.unpack_from("<i", tail, goff)[0]
             if cnt <= 0 or cnt > 256:
                 continue
+            p_mtls = goff + 4 + struct.unpack_from("<i", tail, goff + 4)[0]
             p_cmds = goff + 8 + struct.unpack_from("<i", tail, goff + 8)[0]
             for k in range(cnt):
                 if p_cmds + k * 4 + 4 > len(tail):
                     break
+                m_idx = struct.unpack_from("<i", tail, p_mtls + k * 4)[0] if (0 <= p_mtls and p_mtls + k * 4 + 4 <= len(tail)) else -1
                 c_idx = struct.unpack_from("<i", tail, p_cmds + k * 4)[0]
                 c_off = cmd_base + c_idx * 16
                 if c_off < 0 or c_off + 16 > len(tail):
@@ -605,7 +652,7 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
                     continue
                 desc = struct.unpack_from("<14i", tail, t_off)
                 if desc[0] in (4, 5, 6) and 0 < desc[1] < 200000 and (desc[2] & 0xFF) in (24, 28, 32, 36, 40, 44, 48):
-                    draw_calls.append((desc, None))
+                    draw_calls.append((desc, None, m_idx))
 
     if not draw_calls:
         # Last-resort scan for 0x82 command records across tail
@@ -617,13 +664,13 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
                 if t_off + 56 <= len(tail):
                     desc = struct.unpack_from("<14i", tail, t_off)
                     if desc[0] in (4, 5, 6) and 0 < desc[1] < 200000 and (desc[2] & 0xFF) in (24, 28, 32, 36, 40, 44, 48):
-                        draw_calls.append((desc, None))
+                        draw_calls.append((desc, None, -1))
 
     primitives: list[MeshPrimitive] = []
     seen_ranges: set[tuple[int, int, int, int, int | None]] = set()
     seen_bboxes: set[tuple[Any, ...]] = set()
 
-    for desc, bone_idx in draw_calls:
+    for desc, bone_idx, m_idx in draw_calls:
         if len(primitives) >= MAX_MESHES_PER_MODEL:
             break
         prim_tp_raw = desc[0]
@@ -658,10 +705,26 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
         else:
             r_inv, t_inv = None, None
 
+        is_skinned_fmt = (desc[2] > 0) or (stride >= 40)
+        has_uv = stride >= 28
+        uv_off = (stride - 16) if is_skinned_fmt else (stride - 8)
+        col_off = (uv_off - 4) if has_uv else (stride - 4)
+        has_col = col_off >= 16 and col_off + 4 <= stride
+
+        mr, mg, mb = 1.0, 1.0, 1.0
+        has_mtl_col = False
+        if 0 <= m_idx < len(nu_mtls):
+            (mr, mg, mb), mtl_tid = nu_mtls[m_idx]
+            has_mtl_col = True
+            if mtl_tid >= 0 and (mr + mg + mb) < 0.05:
+                mr, mg, mb = 1.0, 1.0, 1.0
+        elif not nu_mtls and not has_col:
+            mr, mg, mb = 0.85, 0.87, 0.90
+
         pos_list: list[float] = []
         norm_list: list[float] = []
+        col_list: list[float] = []
         uv_list: list[float] = []
-        has_uv = stride >= 32
         uv_ok = True
         norm_ok = stride >= 24
 
@@ -693,8 +756,18 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
                 else:
                     norm_list.extend((0.0, 1.0, 0.0))
 
+            if has_col or has_mtl_col:
+                cr, cg, cb = 1.0, 1.0, 1.0
+                if has_col:
+                    b0, b1, b2 = vb_bytes[v_off + col_off], vb_bytes[v_off + col_off + 1], vb_bytes[v_off + col_off + 2]
+                    if not (b0 == 0 and b1 == 0 and b2 == 0):
+                        cr = min(1.0, b0 / 127.0)
+                        cg = min(1.0, b1 / 127.0)
+                        cb = min(1.0, b2 / 127.0)
+                col_list.extend((mr * cr, mg * cg, mb * cb))
+
             if has_uv:
-                u, v = struct.unpack_from("<ff", vb_bytes, v_off + stride - 8)
+                u, v = struct.unpack_from("<ff", vb_bytes, v_off + uv_off)
                 if not (math.isfinite(u) and math.isfinite(v) and abs(u) <= 64.0 and abs(v) <= 64.0):
                     uv_ok = False
                 uv_list.extend((u if math.isfinite(u) else 0.0, v if math.isfinite(v) else 0.0))
@@ -714,12 +787,176 @@ def parse_nu20_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
         prim.positions = pos_list
         if norm_ok and len(norm_list) == vcnt * 3:
             prim.normals = norm_list
+        if len(col_list) == vcnt * 3:
+            prim.colors = col_list
         if has_uv and uv_ok and len(uv_list) == vcnt * 2:
             prim.uvs = uv_list
         prim.indices = tri
         primitives.append(prim)
 
     return primitives, ("nu20-disp" if primitives else "nu20-empty")
+
+
+def _is_non_diffuse_nut(nut_name: str) -> bool:
+    low = nut_name.lower().replace("\\", "/")
+    return any(
+        tok in low
+        for tok in (
+            "/undersides/",
+            "mask_",
+            "sbmask_",
+            "/normals/",
+            "_n.nut",
+            "_nrm.nut",
+            "specular",
+            "dummylightmap",
+            "capenormal",
+        )
+    )
+
+
+def _parse_hsem_atem_names(buf: bytes, hsem_pos: int, psid: int) -> list[str]:
+    names: list[str] = []
+    start_scan = max(0, psid) if psid >= 0 else max(0, hsem_pos)
+    atem = buf.find(b"ATEM", start_scan)
+    if atem < 0 and hsem_pos > 8:
+        pre = buf.find(b"ATEM", 0, hsem_pos)
+        if pre >= 0:
+            atem = pre
+    if atem < 0 or atem + 12 > len(buf):
+        return names
+    pos = atem + 8
+    if buf[pos : pos + 4] == b"ROTV":
+        pos += 4
+    if pos + 4 > len(buf):
+        return names
+    n_nut = struct.unpack_from(">I", buf, pos)[0]
+    pos += 4
+    if n_nut == 0 or n_nut > 4096:
+        return names
+    for _ in range(n_nut):
+        if pos + 4 > len(buf):
+            break
+        slen = struct.unpack_from(">I", buf, pos)[0]
+        pos += 4
+        if slen > 1024 or pos + slen > len(buf):
+            break
+        names.append(buf[pos : pos + slen].rstrip(b"\x00").decode("ascii", "ignore"))
+        pos += slen
+    return names
+
+
+def _parse_hsem_psid_map(buf: bytes, psid: int) -> dict[int, int]:
+    mesh_to_mtl: dict[int, int] = {}
+    if psid < 0 or psid + 12 > len(buf):
+        return mesh_to_mtl
+    pos = psid + 8
+    if buf[pos : pos + 4] == b"ROTV":
+        pos += 4
+    if pos + 4 > len(buf):
+        return mesh_to_mtl
+    slen = struct.unpack_from(">I", buf, pos)[0]
+    pos += 4
+    if slen > 4096 or pos + slen > len(buf):
+        return mesh_to_mtl
+    pos += slen
+    if buf[pos : pos + 4] == b"ROTV":
+        pos += 4
+    if pos + 4 > len(buf):
+        return mesh_to_mtl
+    n_ops = struct.unpack_from(">I", buf, pos)[0]
+    pos += 4
+    if n_ops == 0 or n_ops > 65536 or pos + n_ops * 6 > len(buf):
+        return mesh_to_mtl
+    ops = [struct.unpack_from(">HI", buf, pos + i * 6) for i in range(n_ops)]
+    pos += n_ops * 6
+    if buf[pos : pos + 4] == b"ROTV":
+        pos += 4
+    if pos + 4 > len(buf):
+        return mesh_to_mtl
+    n_grp = struct.unpack_from(">I", buf, pos)[0]
+    pos += 4
+    if n_grp == 0 or n_grp > 8192:
+        return mesh_to_mtl
+    for _ in range(n_grp):
+        if pos + 6 > len(buf):
+            break
+        pos += 2
+        nm = struct.unpack_from(">I", buf, pos)[0]
+        pos += 4
+        if nm > 8192 or pos + nm * 4 + 4 > len(buf):
+            break
+        mtls = struct.unpack_from(f">{nm}I", buf, pos)
+        pos += nm * 4
+        nc = struct.unpack_from(">I", buf, pos)[0]
+        pos += 4
+        if nc > 8192 or pos + nc * 4 > len(buf):
+            break
+        cmds = struct.unpack_from(f">{nc}I", buf, pos)
+        pos += nc * 4
+        for mi, ci in zip(mtls, cmds):
+            for delta in (0, 1, -1):
+                oi = ci + delta
+                if 0 <= oi < n_ops and ops[oi][0] == 0xB300:
+                    mesh_to_mtl[ops[oi][1]] = mi
+                    break
+    return mesh_to_mtl
+
+
+def _parse_hsem_ltmu_colors(
+    buf: bytes,
+    ltmu: int,
+    psid: int,
+    nut_names: list[str],
+) -> list[tuple[float, float, float]]:
+    if ltmu < 0 or ltmu + 12 > len(buf):
+        return []
+    l_ver = struct.unpack_from(">I", buf, ltmu + 4)[0]
+    pos = ltmu + 8
+    if buf[pos : pos + 4] == b"ROTV":
+        pos += 4
+    if pos + 4 > len(buf):
+        return []
+    n_mtl = struct.unpack_from(">I", buf, pos)[0]
+    if n_mtl == 0 or n_mtl > 8192:
+        return []
+    tdml = buf.find(b"TDML", ltmu + 8)
+    end_pos = tdml if (tdml > ltmu and (psid < 0 or tdml <= psid)) else (psid if psid > ltmu else len(buf))
+    colors: list[tuple[float, float, float]] = [(1.0, 1.0, 1.0)] * n_mtl
+    if l_ver <= 0x20:
+        pat = b"\x7f\x7f\x7f\xff" * 3
+        hits: list[int] = []
+        scan_i = ltmu
+        while scan_i <= end_pos - 12:
+            idx = buf.find(pat, scan_i, end_pos)
+            if idx < 0:
+                break
+            if not hits or idx - hits[-1] >= 32:
+                hits.append(idx)
+                if len(hits) >= n_mtl:
+                    break
+                scan_i = idx + 24
+            else:
+                scan_i = idx + 12
+        for m, h_idx in enumerate(hits):
+            mo = h_idx - 0x74
+            if mo < ltmu or mo + 0x74 > end_pos:
+                continue
+            tid = struct.unpack_from(">h", buf, mo + 0x61)[0]
+            if tid >= 0 and not (0 <= tid < len(nut_names) and _is_non_diffuse_nut(nut_names[tid])):
+                continue
+            b_c, g_c, r_c = buf[mo + 0x70], buf[mo + 0x71], buf[mo + 0x72]
+            if not (b_c == 0x7F and g_c == 0x7F and r_c == 0x7F) and (b_c + g_c + r_c) > 0:
+                colors[m] = (r_c / 255.0, g_c / 255.0, b_c / 255.0)
+            elif l_ver >= 0x15 and mo + 0x26E <= end_pos:
+                fr, fg, fb = struct.unpack_from(">3f", buf, mo + 0x262)
+                if (
+                    math.isfinite(fr) and math.isfinite(fg) and math.isfinite(fb)
+                    and 0.0 <= fr <= 1.05 and 0.0 <= fg <= 1.05 and 0.0 <= fb <= 1.05
+                    and (fr + fg + fb) > 0.01
+                ):
+                    colors[m] = (max(0.0, min(1.0, fr)), max(0.0, min(1.0, fg)), max(0.0, min(1.0, fb)))
+    return colors
 
 
 def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]:
@@ -730,12 +967,12 @@ def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
     if hsem_pos < 0:
         return [], "none"
 
-    f.seek(hsem_pos)
-    buf = f.read(min(file_size - hsem_pos, MAX_HSEM_PARSE_BYTES))
-    if len(buf) < 16:
+    f.seek(0)
+    buf = f.read(min(file_size, MAX_HSEM_PARSE_BYTES))
+    if hsem_pos + 16 > len(buf):
         return [], "none"
 
-    p = 4
+    p = hsem_pos + 4
     ver = struct.unpack_from(">I", buf, p)[0]
     p += 4
     mode = f"hsem-0x{ver:X}"
@@ -814,6 +1051,8 @@ def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
                     "pos_off": 0,
                     "norm_type": -1,
                     "norm_off": 0,
+                    "col_type": -1,
+                    "col_off": 0,
                     "uv_type": -1,
                     "uv_off": 0,
                     "stride": 0,
@@ -972,6 +1211,7 @@ def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
             vb1 = resolved_vbs[1] if len(resolved_vbs) > 1 else None
             if vbase + vcnt <= vb0["nv"] and ioff + icnt <= len(cur_ib):
                 submeshes.append({
+                    "mesh_idx": m,
                     "vb0": vb0,
                     "vb1": vb1,
                     "ib": cur_ib,
@@ -1004,6 +1244,10 @@ def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
     if not submeshes:
         return [], mode
 
+    nut_names = _parse_hsem_atem_names(buf, hsem_pos, psid)
+    mesh_to_mtl = _parse_hsem_psid_map(buf, psid)
+    ltmu_colors = _parse_hsem_ltmu_colors(buf, ltmu, psid, nut_names)
+
     lod0_cnt = math.ceil(len(submeshes) / n_logh)
     lod0 = submeshes[:lod0_cnt]
     if sum(1 for sm in lod0 if sm["blen"] > 0) >= 3:
@@ -1014,7 +1258,7 @@ def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
     for sm in lod0:
         if len(result) >= MAX_MESHES_PER_MODEL:
             break
-        positions, normals, uvs = _decode_vb_slice(buf, sm["vb0"], sm["vb1"], sm["vbase"], sm["vcnt"])
+        positions, normals, v_colors, uvs = _decode_vb_slice(buf, sm["vb0"], sm["vb1"], sm["vbase"], sm["vcnt"])
         if len(positions) < 9:
             continue
         sub_ib = sm["ib"][sm["ioff"] : sm["ioff"] + sm["icnt"]]
@@ -1026,11 +1270,27 @@ def parse_hsem_stream(f: Any, file_size: int) -> tuple[list[MeshPrimitive], str]
             continue
         seen_bboxes.add(bbox_key)
 
+        vc = len(positions) // 3
+        m_idx = mesh_to_mtl.get(sm["mesh_idx"], -1)
+        mr, mg, mb = ltmu_colors[m_idx] if (0 <= m_idx < len(ltmu_colors)) else (1.0, 1.0, 1.0)
+        has_vcol = len(v_colors) == vc * 3
+        has_mcol = 0 <= m_idx < len(ltmu_colors)
+        final_colors: list[float] = []
+        if has_vcol and has_mcol:
+            for ci in range(0, vc * 3, 3):
+                final_colors.extend((v_colors[ci] * mr, v_colors[ci + 1] * mg, v_colors[ci + 2] * mb))
+        elif has_vcol:
+            final_colors = v_colors
+        elif has_mcol:
+            final_colors = [mr, mg, mb] * vc
+
         prim = MeshPrimitive()
         prim.positions = positions
         if len(normals) == len(positions):
             prim.normals = normals
-        if len(uvs) == (len(positions) // 3) * 2:
+        if len(final_colors) == vc * 3:
+            prim.colors = final_colors
+        if len(uvs) == vc * 2:
             prim.uvs = uvs
         prim.indices = tri
         result.append(prim)
@@ -1066,6 +1326,7 @@ def write_glb(output_glb_path: Path, primitives: list[MeshPrimitive]) -> tuple[i
     gltf_primitives: list[dict[str, Any]] = []
     total_verts = 0
     total_tris = 0
+    any_colors = any(len(p.colors) == len(p.positions) and len(p.positions) > 0 for p in primitives)
 
     for prim in primitives:
         vc = len(prim.positions) // 3
@@ -1106,6 +1367,17 @@ def write_glb(output_glb_path: Path, primitives: list[MeshPrimitive]) -> tuple[i
             bin_chunks.append(norm_bytes)
             bin_len += len(norm_bytes)
 
+        if any_colors:
+            col_vals = prim.colors if len(prim.colors) == vc * 3 else ([1.0, 1.0, 1.0] * vc)
+            col_bytes = struct.pack(f"<{len(col_vals)}f", *col_vals)
+            col_view = len(buffer_views)
+            buffer_views.append({"buffer": 0, "byteOffset": bin_len, "byteLength": len(col_bytes), "target": 34962})
+            col_acc = len(accessors)
+            accessors.append({"bufferView": col_view, "componentType": 5126, "count": vc, "type": "VEC3"})
+            attrs["COLOR_0"] = col_acc
+            bin_chunks.append(col_bytes)
+            bin_len += len(col_bytes)
+
         if len(prim.uvs) == vc * 2:
             uv_bytes = struct.pack(f"<{len(prim.uvs)}f", *prim.uvs)
             uv_view = len(buffer_views)
@@ -1131,6 +1403,7 @@ def write_glb(output_glb_path: Path, primitives: list[MeshPrimitive]) -> tuple[i
         bin_chunks.append(b"\x00" * bin_pad)
         bin_len += bin_pad
 
+    base_factor = [1.0, 1.0, 1.0, 1.0] if any_colors else [0.85, 0.87, 0.90, 1.0]
     doc = {
         "asset": {"version": "2.0", "generator": "RemakeEngine-LegoModelConverter-Py"},
         "scene": 0,
@@ -1139,9 +1412,9 @@ def write_glb(output_glb_path: Path, primitives: list[MeshPrimitive]) -> tuple[i
         "materials": [
             {
                 "pbrMetallicRoughness": {
-                    "baseColorFactor": [0.85, 0.87, 0.90, 1.0],
+                    "baseColorFactor": base_factor,
                     "metallicFactor": 0.05,
-                    "roughnessFactor": 0.65,
+                    "roughnessFactor": 0.55,
                 },
                 "doubleSided": True,
             }
