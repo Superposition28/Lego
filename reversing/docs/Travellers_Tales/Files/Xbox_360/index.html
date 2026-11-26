@@ -1,30 +1,78 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Xbox & Xbox 360 Combined Filesystem</title>
+    <title>Xbox &amp; Xbox 360 Inspected Discs (XDVDFS)</title>
     <link rel="stylesheet" href="../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Files' target='_parent'>Files</a><span>/</span>Xbox_360
-    </nav>
-    <h1>Xbox &amp; Xbox 360: Combined File &amp; Directory Layout</h1>
-<aside class="source-notice"><p><strong>Platforms:</strong> Original Xbox (XISO XDVDFS at <code>0x10000</code>) &amp; Xbox 360 (XGD2 XDVDFS at <code>0x0FD90000</code> + STFS)</p></aside>
-<section class="doc-overview">
-    <h2>1. Original Xbox &amp; Early Xbox 360 Loose XDVDFS Layout (LSW1 &amp; LSW2)</h2>
-    <p>Uniquely, <em>LEGO Star Wars</em> (2005 Xbox) and <em>LEGO Star Wars II</em> (2006 Xbox &amp; Xbox 360) do <strong>not</strong> pack their assets into <code>GAME.DAT</code>. All files sit directly inside the XDVDFS partition:</p>
-    <ul>
-        <li><strong>LSW1 Xbox (4,721 loose files):</strong> <code>default.xbe</code>, <code>chars/</code> (<code>.hgx</code>, <code>.ani</code>, <code>.bsa</code>), <code>levels/</code> (<code>.nux</code>, <code>.ter</code>, <code>.rtl</code>, <code>.ai2</code>), <code>cut/</code> (<code>.cut</code>), <code>sound/</code> (<code>.wavx</code>).</li>
-        <li><strong>LSW2 Xbox (8,329 loose files):</strong> <code>default.xbe</code>, <code>.nx2</code> scenes, <code>.hx2</code> models + <code>.hx2.htm</code> Perforce export logs, <code>.an3</code> animations, <code>.fpk</code> packages.</li>
-        <li><strong>LSW2 Xbox 360 (3,973 loose files + LIVE DLC):</strong> <code>default.xex</code>, <code>360_exlist</code> extension remapping table (<code>ter -> ctr</code>, <code>cu2 -> cc2</code>, <code>an3 -> ca3</code>, <code>vag -> xma</code>), and 57 KB STFS DLC package enabling <em>LSW1</em> save characters.</li>
-    </ul>
-    <h2>2. Xbox 360 PakDat v1.01 Layout (Era 3–4: HP 1–4, HP 5–7, Batman 2)</h2>
-    <ul>
-        <li><code>Default.xex</code>: XEX2 Xenon executable container (Title IDs <code>0x575207E6</code>, <code>0x57520812</code>, <code>0x57520817</code>).</li>
-        <li><code>GAME*.DAT</code>: 57-byte <code>PakDat v1.01</code> archives storing big-endian PowerPC assets and XMA2 (<code>.xma</code>) audio streams.</li>
-    </ul>
-</section>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../Files/index.html">Files</a><span>/</span>Xbox / Xbox 360</nav>
+    <h1>Xbox / Xbox 360 Filesystem &amp; Binary Notes</h1>
+    <aside class="source-notice">
+        <p><strong>Inspected Directly:</strong> <em>LSW1</em> Xbox, <em>LSW2</em> Xbox, <em>LSW2</em> X360, plus <em>HP 1–4</em> and <em>HP 5–7</em> X360 executables.</p>
+    </aside>
+    <section class="doc-overview">
+        <p>Era 1–2 Xbox and early X360 discs (<em>LSW1</em>, <em>LSW2</em>) ship loose uncompressed files directly inside XDVDFS (<code>MICROSOFT*XBOX*MEDIA</code>), whereas Era 3+ X360 releases mount chunked <code>GAME*.DAT</code> containers identically to PS3.</p>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>Xbox / Xbox 360 Inspected Source Images &amp; Archives</caption>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Build / IDs</th>
+                        <th>Container &amp; TOC</th>
+                        <th>Observed Formats / Counts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LEGO Star Wars: The Video Game (2005)</td>
+                        <td>USA ISO (4,721 loose files, no .DAT)</td>
+                        <td>Loose XDVDFS filesystem</td>
+                        <td>.dds, .nux, .hgx, .ani, .bsa, .wavx 124, .cut, .ter, .rtl, .for, .cns, .txt</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars II: The Original Trilogy (2006)</td>
+                        <td>USA/Europe ISO (8,329 loose files)</td>
+                        <td>Loose XDVDFS filesystem</td>
+                        <td>.nx2, .hx2, .an3 (ANI4), .bsa, .anl, .wavm 149, .cu2, .fpk (0x1234567A), .htm</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars II: The Original Trilogy (2006)</td>
+                        <td>USA Rev 1 ISO (3,975 loose files)</td>
+                        <td>Loose XDVDFS filesystem</td>
+                        <td>.gsc (02UN), .ghg (02UN), .ctr, .xma 149, .cc2, .tex, .txt</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Pirates of the Caribbean (2011 + 5 LIVE DLCs)</td>
+                        <td>6 vols (GAME + GAME0..4) · Default.xex 5,394,432 B · 42560802 STFS</td>
+                        <td>TOC v-4 (6 vols, 8B nodes)</td>
+                        <td>.txt 1,502, .xma 1,109, .gsc 1,076, .tex 935, .led 787, .scp 779, .cd 428, .dno 322, .as 308, LIVE STFS</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Harry Potter: Years 1–4 (2010)</td>
+                        <td>USA/EU ISO (7.48 GB) · Default.xex (9,838,592 B, Title ID 0x575207E6) · GAME + GAME1..6.DAT</td>
+                        <td>TOC v-4 (7 vols, PakDat v1.01)</td>
+                        <td>.xma, .gsc, .ghg, .tex, .led, .scp, .cd, .dno, .as, .pac</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Harry Potter: Years 5–7 (2011)</td>
+                        <td>USA ISO (8.33 GB) · Default.xex (11,640,832 B, Title ID 0x57520812) · GAME + GAME0.DAT</td>
+                        <td>TOC v-4 (2 large vols, PakDat v1.01)</td>
+                        <td>.xma, .sf, .led, .tex, .gsc, .cd, .dno, .as, .pac, .cpd</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2>XDVDFS &amp; XEX2 Notes</h2>
+        <ul>
+            <li>Original Xbox security partition offset typically sits at <code>0x18300000</code>; X360 partition offset sits at <code>0x0FD90000</code> / <code>0x02080000</code>.</li>
+            <li>Xbox 360 executables are big-endian PPC64 PE images wrapped in <code>XEX2</code>.</li>
+        </ul>
+    </section>
 </body>
+
 </html>

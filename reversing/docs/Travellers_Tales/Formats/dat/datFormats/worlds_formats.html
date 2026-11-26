@@ -1,28 +1,101 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.lxfml / .g1m / .g1t / .chunk (LEGO Worlds & NTT Voxel / Brick Formats)</title>
+    <title>.LXFML / .G1M / .G1T / .CHUNK (XML Bricks, NTT Voxel &amp; PS4 CUSA02985)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.lxfml
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.lxfml / .g1m / .chunk (Bricks/NTT)</nav>
+    <h1>.LXFML (XML Brick Blueprints) &amp; .G1M / .G1T / .CHUNK (LEGO Worlds / NTT)</h1>
+    <aside class="source-notice">
+        <p><strong>Mixed Direct + Reference Provenance:</strong> <code>.lxfml</code> (<code>LXFML versionMajor="5"</code>) was <strong>directly observed</strong> in <em>LEGO Dimensions</em> (10 files). Local PS4 <em>LEGO Worlds</em> <code>CUSA02985</code> <code>\x7fCNT</code> fPKG metadata (<code>PARAM.SFO</code>, PlayGo, <code>snd0.at9</code>, <code>trophy00.trp</code>, outer PFS <code>20130315</code>) is verified directly, while inner encrypted PFS payloads (<code>.CC40TAD</code>, <code>.g1m</code>, <code>.g1t</code>, <code>.chunk</code>) remain documented via reference parsers (<code>TTModding-Docs</code> / <code>TTGames-Explorer-Rebirth</code>).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Brick Assembly &amp; Procedural Voxels · Dimensions (.lxfml) &amp; LEGO Worlds (PS4 CUSA02985 + Ref)</p>
+        <p>Standard LEGO Digital Designer XML brick models (.lxfml, verified directly in LEGO Dimensions x10) plus PS4 LEGO Worlds (CUSA02985 base v01.00, update v01.12, Classic Space DLC) container metadata and NTT voxel (.chunk / .g1m / .g1t) formats.</p>
+        <dl>
+            <dt>Extensions</dt>
+            <dd><code>.lxfml</code> (verified in <em>Dimensions</em>), <code>.g1m</code>, <code>.g1t</code>, <code>.chunk</code> (<em>Worlds</em> inner PFS [Ref])</dd>
+            <dt>&lt;code&gt;.lxfml&lt;/code&gt; Root</dt>
+            <dd><code>&lt;LXFML versionMajor="5" versionMinor="0"&gt;&lt;Bricks&gt;&lt;Brick refID="0" designID="11203"&gt;...</code></dd>
+            <dt>PS4 Title ID</dt>
+            <dd><code>CUSA02985</code> (<code>UP1018-CUSA02985_00-LEGOWORLDS000001</code>, Base <code>v01.00</code> &amp; Patch <code>v01.12</code>, Classic Space DLC)</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.lxfml / .g1m / .g1t / .chunk (LEGO Worlds & NTT Voxel / Brick Formats)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> Title-Specific (LEGO Worlds) · <strong>Scope:</strong> LEGO Worlds (2017) & Brick-Building Titles</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>LEGO Digital Designer (LDD) XML brick assembly blueprints (.lxfml), procedural voxel terrain chunks, and brick stud connectivity graphs.</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.lxfml</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code><?xml (LXFML) / G1M / G1T</code></dd>
-        <dt>Subsystem</dt><dd>Title-Specific (LEGO Worlds)</dd>
-        <dt>Cross-Game Scope</dt><dd>LEGO Worlds (2017) & Brick-Building Titles</dd>
-    </dl>
-</section>
-<h2>Overview</h2>
-<p>Uniquely among TT Games titles, <em>LEGO Worlds</em> (2017) replaces pre-modeled static <code>.gsc</code> levels with a real-time procedural voxel terrain generator and allows importing/exporting standard <strong>LEGO Digital Designer</strong> (<code>.lxfml</code> / <code>.lxf</code>) brick blueprints alongside <code>.CC40TAD</code> (TOC v-10/-11) archives.</p>
+    <section id="overview" class="doc-overview">
+        <h2>Directly Observed <code>.lxfml</code> &amp; PS4 <code>CUSA02985</code> vs Inner NTT Voxels</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>Brick Blueprint &amp; NTT Voxel Format Summary</caption>
+                <thead>
+                    <tr>
+                        <th>Format</th>
+                        <th>Provenance</th>
+                        <th>Structure &amp; Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>.lxfml</code></td>
+                        <td><strong>Verified in <em>Dimensions</em> (10 files)</strong> &amp; <em>Worlds</em></td>
+                        <td>UTF-8 XML (`versionMajor="5" versionMinor="0"`) listing <code>&lt;Brick&gt;</code>, <code>designID</code> (official LEGO element ID), <code>materials</code>, and 3&times;4 transformation matrices (<code>stuff\cubes\cubemedone.lxfml</code>, 47,389 B).</td>
+                    </tr>
+                    <tr>
+                        <td>PS4 <code>CUSA02985</code> PKGs</td>
+                        <td><strong>Verified in local PS4 fPKGs</strong></td>
+                        <td>Three <code>\x7fCNT</code> containers (Base 1.65 GB, Update <code>v01.12</code> 1.68 GB, Classic Space DLC 1.57 MB) with PlayGo (11 chunks), <code>snd0.at9</code>, <code>trophy00.trp</code>, and AES-XTS encrypted outer PFS (<code>magic=20130315</code>, <code>mode=0x000D</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>.g1m</code> / <code>.g1t</code></td>
+                        <td>Reference-only (inside encrypted PFS / PC)</td>
+                        <td>NTT / Koei-style binary mesh and texture sheets used alongside <code>.CC40TAD</code> (`v-10/-11`).</td>
+                    </tr>
+                    <tr>
+                        <td><code>.chunk</code></td>
+                        <td>Reference-only (inside encrypted PFS / PC)</td>
+                        <td>Procedural voxel terrain block chunk arrays storing biome IDs and brick occupancy grids.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/dat.html"><code>.DAT / .CC40TAD</code></a> — Loaded by hub cube builders in Dimensions and biome generators in Worlds.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Direct Discovery Note:</strong> Previously assumed exclusive to <em>LEGO Worlds</em> (2017), <code>.lxfml</code> is already shipping in production inside <em>LEGO Dimensions</em> (2015).</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseLxfmlBricks(xml_text):
+    root = ParseXml(xml_text)
+    return [(b.attrib[&quot;designID&quot;], b.attrib.get(&quot;materials&quot;)) for b in root.findall(&quot;.//Brick&quot;)]</code></pre>
+    </section>
+
 </body>
+
 </html>

@@ -1,28 +1,105 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.ter / .ctr (Terrain & Collision Octree Mesh)</title>
+    <title>.TER (Classic Engine Terrain Meshes)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.ter
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.ter (Terrain Heightfields)</nav>
+    <h1>.TER (Era 1 Classic Terrain Meshes)</h1>
+    <aside class="source-notice">
+        <p><strong>Observed Directly:</strong> <em>LSW1</em> Xbox (e.g. <code>levels/Episode_I/Chapter_05/Retake_F/Retake_F.ter</code>, <code>689,900</code> B, header <code>56 28 05 00 00 00 10 00</code>).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Environment Terrain · Era 1 Nu2 (LEGO Star Wars I)</p>
+        <p>Binary heightfield / triangle terrain chunks observed in Era 1 LEGO Star Wars: The Video Game (Original Xbox) prior to full .gsc scene unification.</p>
+        <dl>
+            <dt>Extension</dt>
+            <dd><code>.ter</code></dd>
+            <dt>Observed Header</dt>
+            <dd><code>u32le</code> vertex/block header + IEEE 754 <code>Float32</code> bounding/vertex records</dd>
+            <dt>Scope</dt>
+            <dd>Era 1 (<em>LSW1</em>); superseded by <code>.gsc</code> in Era 2+</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.ter / .ctr (Terrain & Collision Octree Mesh)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> Level Design & AI · <strong>Scope:</strong> Universal Across Era 1–4 (LSW1, LSW2, HP 1–4, HP 5–7, Batman 2, Dimensions; .ctr on LSW2 X360)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>Spatial octree collision mesh and surface material flag database used for ground raycasting, footstep audio material lookup, and physics collision.</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.ter</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>Binary Octree / Collision Hull</code></dd>
-        <dt>Subsystem</dt><dd>Level Design & AI</dd>
-        <dt>Cross-Game Scope</dt><dd>Universal Across Era 1–4 (LSW1, LSW2, HP 1–4, HP 5–7, Batman 2, Dimensions; .ctr on LSW2 X360)</dd>
-    </dl>
-</section>
-<h2>Overview</h2>
-<p>Present in every inspected TT Games title from <em>LEGO Star Wars</em> (2005, 149 files) through <em>LEGO Dimensions</em> (2015, 1,148 files). On <em>LSW2</em> Xbox 360, <code>360_exlist</code> maps <code>ter -> ctr</code> (179 files) for big-endian console collision octrees.</p>
+    <section id="overview" class="doc-overview">
+        <h2>Binary Header Observation (<em>LSW1</em> Xbox)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>Observed .ter Header Bytes (Retake_F.ter, 689,900 B)</caption>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Type</th>
+                        <th>Observed Hex / Value</th>
+                        <th>Interpretation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0x00</code></td>
+                        <td>4</td>
+                        <td><code>u32le</code></td>
+                        <td><code>0x00052856</code> (<code>338,006</code>)</td>
+                        <td>Payload size / vertex or grid descriptor count.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x04</code></td>
+                        <td>4</td>
+                        <td><code>u32le</code></td>
+                        <td><code>0x00100000</code></td>
+                        <td>Alignment / grid dimension flags.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x08..0x1F</code></td>
+                        <td>24</td>
+                        <td><code>f32le / packed</code></td>
+                        <td><code>a0 fb af bd e0 93 b4 3d ...</code></td>
+                        <td>IEEE 754 spatial extent / terrain vertex normal &amp; height tuples (~<code>&plusmn;0.088..0.038</code>).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/xex/index.html"><code>XDVDFS / Level Loaders</code></a> — Loaded alongside level .nux scene geometry in LSW1.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Unresolved Full Grid Stride:</strong> Exact grid-cell index packing and material splatting offsets inside <code>.ter</code> beyond the header floats have not yet been fully mapped; absent from all Era 2+ PS3/X360 builds.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseTerHeader(buf):
+    count_or_sz, flags = ReadU32LE2(buf, 0x00)
+    // Remaining grid cells follow at 0x08 (exact stride unconfirmed beyond bounding vecs)
+    return {count_or_sz: count_or_sz, flags: flags, payload_size: len(buf) - 8}</code></pre>
+    </section>
+
 </body>
+
 </html>

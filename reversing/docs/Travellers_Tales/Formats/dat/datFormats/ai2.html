@@ -1,28 +1,122 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.ai2 / .aib (AI Navigation Waypoint & Pathfinding Mesh)</title>
+    <title>.AI2 / .AIB (AI Navigation Meshes &amp; Waypoint Graphs)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.ai2
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.ai2 / .aib (AI Nav &amp; Grids)</nav>
+    <h1>.AI2 (NuAI2) &amp; .AIB (.CC4IATT) AI Navigation Files</h1>
+    <aside class="source-notice">
+        <p><strong>Dissected Directly:</strong> <em>BM2</em> PS3 (192 <code>.aib</code>, <code>.CC4IATT v6</code>) &amp; <em>LOTR</em> (23 <code>.aib</code>, <code>v8</code>); <em>TCS/BM1/Indy 2</em> <code>.ai2</code>.</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Artificial Intelligence · Era 1–3a (.ai2) &amp; Open-World Era 3c–4 (.aib)</p>
+        <p>Pathfinding, sector bounds, and character waypoint graphs. Era 1–3a use NuAI2 (.ai2, TCS 193, BM1 114, Indy2 54); open-world Batman 2 &amp; LOTR introduce binary .CC4IATT (.aib).</p>
+        <dl>
+            <dt>Extensions</dt>
+            <dd><code>.ai2</code> (Era 1–3a), <code>.aib</code> (<em>BM2</em>, <em>LOTR</em>)</dd>
+            <dt>Signatures</dt>
+            <dd><code>.ai2</code> legacy waypoint structs &middot; <code>.aib</code> = <code>.CC4IATT</code> (v6/v8 BE sector navnodes)</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.ai2 / .aib (AI Navigation Waypoint & Pathfinding Mesh)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> Level Design & AI · <strong>Scope:</strong> Universal (.ai2 in LSW1, LSW2, HP 1–4, HP 5–7, Batman 2; .aib in Batman 2 & Dimensions)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>AI navigation graph and pathfinding mesh nodes controlling NPC movement, companion following, and enemy patrol bounds.</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.ai2</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>Binary NavGraph</code></dd>
-        <dt>Subsystem</dt><dd>Level Design & AI</dd>
-        <dt>Cross-Game Scope</dt><dd>Universal (.ai2 in LSW1, LSW2, HP 1–4, HP 5–7, Batman 2; .aib in Batman 2 & Dimensions)</dd>
-    </dl>
-</section>
-<h2>Overview</h2>
-<p><code>.ai2</code> defines navigation polygons and link edges from <em>LSW1</em> (120 files) through <em>Batman 2</em> (85 files). In <em>Batman 2</em> (284 <code>.aib</code> files) and <em>LEGO Dimensions</em> (856 <code>.aib</code> files), AI navmeshes transition to the updated <code>.aib</code> (AI Binary) format.</p>
+    <section id="overview" class="doc-overview">
+        <h2>Binary Layout of <code>.aib</code> (<code>.CC4IATT</code>)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.aib Navigation Sector Layout (Observed in aiworld_0_sector_5.aib)</caption>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Type</th>
+                        <th>Field</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0x00</code></td>
+                        <td>4</td>
+                        <td><code>u32be</code></td>
+                        <td><code>payload_sz</code></td>
+                        <td>Remaining file size (<code>0x384</code> = 900 B).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x04</code></td>
+                        <td>8</td>
+                        <td><code>char[8]</code></td>
+                        <td><code>magic</code></td>
+                        <td><code>".CC4IATT"</code> (TT AI Tag).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x0C</code></td>
+                        <td>4</td>
+                        <td><code>u32be</code></td>
+                        <td><code>version</code></td>
+                        <td><code>6</code> (<em>BM2</em>) or <code>8</code> (<em>LOTR</em>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x10</code></td>
+                        <td>4</td>
+                        <td><code>u32be</code></td>
+                        <td><code>node_count</code></td>
+                        <td>Number of nav nodes (<code>17</code> in sector 5).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x14+</code></td>
+                        <td>20 B/node</td>
+                        <td><code>u32be, f32be[3], u32be</code></td>
+                        <td><code>NavNode[]</code></td>
+                        <td><code>0x00000010</code> flag + <code>(x, y, z)</code> world coordinate floats + connectivity/mask bits.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/led.html"><code>.led / .sf</code></a> — Pathfinding queries look up nearest sector .aib / .ai2 nodes.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Superseded by <code>.nvm</code>:</strong> From <em>Marvel 1</em> onward, open-world AI navigation uses <code>.nvm</code> (<code>.CC4VNTT</code>).</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseAib(buf):
+    if buf[4:12] != b&quot;.CC4IATT&quot;: raise NotAib
+    ver, cnt = ReadU32BE2(buf, 12)
+    nodes = []
+    for i in 0 .. cnt - 1:
+        off = 20 + i * 20
+        fl = ReadU32BE(buf, off); x, y, z = ReadF32BE3(buf, off + 4)
+        nodes.append({flags: fl, pos: (x, y, z)})
+    return nodes</code></pre>
+    </section>
+
 </body>
+
 </html>

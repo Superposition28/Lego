@@ -1,38 +1,119 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.cbx / .cbs (ChatterBoX Voice/SFX Audio & Lip-Sync Stream)</title>
+    <title>.CBX (!B0X ChatterBoX Compressed Dialogue Codec)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.cbx
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.cbx (!B0X Speech Codec)</nav>
+    <h1>.CBX (!B0X ChatterBoX Compressed Speech Audio)</h1>
+    <aside class="source-notice">
+        <p><strong>Dissected Directly:</strong> <em>BM2</em> (38), <em>Marvel 1</em> (4,717), <em>Hobbit</em> (3,866), and <em>Dimensions</em> (27,714 files).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Voice Audio · Batman 2 through LEGO Dimensions</p>
+        <p>Proprietary high-ratio TT speech compression container (!B0X magic) storing decoded PCM sample byte length, sample rate, and packed frame stream for in-game dialogue.</p>
+        <dl>
+            <dt>Extension</dt>
+            <dd><code>.cbx</code></dd>
+            <dt>Magic Header</dt>
+            <dd><code>"!B0X"</code> (<code>0x21 0x42 0x30 0x58</code>)</dd>
+            <dt>Sample Rates</dt>
+            <dd><code>22,050</code> Hz mono speech (observed in <em>BM2</em> &amp; <em>Marvel 1</em>)</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.cbx / .cbs (ChatterBoX Voice/SFX Audio & Lip-Sync Stream)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> Audio · <strong>Scope:</strong> Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions: 9,899 .cbx and 5,976 .cbs in Dimensions)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>Proprietary 'ChatterBoX' (!B0X) EA MicroTalk-variant compressed speech/SFX audio container (.cbx, 0x1B0-sample frames) and companion phoneme/lip-sync curves (.cbs).</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.cbx</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>!B0X (0x58304221)</code></dd>
-        <dt>Subsystem</dt><dd>Audio</dd>
-        <dt>Cross-Game Scope</dt><dd>Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions: 9,899 .cbx and 5,976 .cbs in Dimensions)</dd>
-    </dl>
-</section>
-<h2>Overview &amp; Binary Structure (<code>CBX.cs</code> / <code>CBXDecoder</code>)</h2>
-<p>Verified against <code>TTGamesExplorerRebirthLib/Formats/CBX.cs</code> and <code>TTModding-Docs/src/fileformats/cbx.md</code>: <code>.cbx</code> stands for <strong>ChatterBoX</strong>, a custom speech and sound-effect compression format derived from Electronic Arts' 10:1 MicroTalk codec:</p>
-<div class="table-scroll"><table class="format-counts">
-<thead><tr><th>Offset</th><th>Size</th><th>Type</th><th>Field</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td>0x00</td><td>4</td><td>Char[4]</td><td>Magic</td><td><code>!B0X</code> (<code>0x58304221</code>).</td></tr>
-<tr><td>0x04</td><td>4</td><td>Int32</td><td>Version</td><td>Format version (<code>-2</code> or <code>-3</code>).</td></tr>
-<tr><td>0x08</td><td>4</td><td>UInt32</td><td>SampleRate</td><td>Output PCM sample rate in Hz (e.g. <code>24000</code> or <code>32000</code> Hz).</td></tr>
-<tr><td>0x0C</td><td>4</td><td>UInt32</td><td>SampleCount</td><td>Total decoded 16-bit mono PCM samples (decoded in <code>0x1B0</code> = 432-sample frames via <code>SoundExpander16</code>).</td></tr>
-</tbody>
-</table></div>
-<p>Companion <code>.cbs</code> files (and <code>_cbs_ps4.pak</code> in the 2024 PC remaster) store synchronized lip-sync phoneme weights and event triggers.</p>
+    <section id="overview" class="doc-overview">
+        <h2>Binary Header Layout (Observed Across <em>BM2</em> &amp; <em>Marvel 1</em>)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.cbx (!B0X) 20-Byte Header</caption>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Type</th>
+                        <th>Field</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0x00</code></td>
+                        <td>4</td>
+                        <td><code>char[4]</code></td>
+                        <td><code>magic</code></td>
+                        <td><code>"!B0X"</code> (<code>0x21423058</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x04</code></td>
+                        <td>4</td>
+                        <td><code>u32le</code></td>
+                        <td><code>decoded_pcm_bytes</code></td>
+                        <td>Uncompressed 16-bit PCM size in bytes (e.g. <code>0x2B48</code> = 11,080 B in <em>BM2</em>; <code>112,874</code> B in <em>Marvel 1</em>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x08</code></td>
+                        <td>4</td>
+                        <td><code>u32le</code></td>
+                        <td><code>sample_rate</code></td>
+                        <td>Sampling rate in Hz (<code>22050</code> = <code>0x5622</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x0C</code></td>
+                        <td>4</td>
+                        <td><code>u32le</code></td>
+                        <td><code>flags_or_seed</code></td>
+                        <td>Codec parameter / bitrate state word (e.g. <code>0xED95B9D8</code> / <code>0x466A5FD0</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x10+</code></td>
+                        <td>var</td>
+                        <td><code>bytes</code></td>
+                        <td><code>chatterbox_bitstream</code></td>
+                        <td>Custom sub-band CELP / ChatterBoX frame packets.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/cd.html"><code>.cd / .sub / .sfx</code></a> — Triggered for minifigure combat grunts and hub dialogue.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Unresolved Inner DSP Transform:</strong> Header fields (decoded PCM byte size &amp; sample rate) are verified; inner ChatterBoX frame entropy/quantization decode requires reversing the <code>!B0X</code> decode loop inside <code>EBOOT.BIN</code>/<code>LEGOBatman2.exe</code>.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseCbxHeader(buf):
+    if buf[0:4] != b&quot;!B0X&quot;: raise NotCbx
+    pcm_sz, rate, flags = ReadU32LE3(buf, 4)
+    return {pcm_bytes: pcm_sz, sample_rate: rate, payload: buf[0x10:]}</code></pre>
+    </section>
+
 </body>
+
 </html>

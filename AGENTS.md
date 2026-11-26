@@ -20,6 +20,14 @@ Read [TODO.md](TODO.md) as planning context. Its engine changes are pending work
 - Keep proprietary game binaries and extracted assets out of commits. Prefer synthetic examples and metadata for sharing findings.
 - Update relevant research notes and usage documentation when behavior or understanding changes.
 
+## Platform Format Reference (PlatformDocs)
+
+When researching or parsing **platform-inherited** formats in this module or any nested `Games/<Game>/` subgame module (console/OS executables, signing/encryption wrappers, disc/ROM/package containers, and SDK metadata across `gba`, `gamecube`, `nds`, `wii`, `psp`, `ps2`, `ps3`, `ps4`, `windows`, `xbox`, and `xbox360`):
+
+- Consult [PlatformDocs](../../../PlatformDocs/index.html) (`../../../PlatformDocs/platforms/<slug>/`) first for clean-room header layouts, endianness rules, bitmasks, and generalized loader behavior instead of re-deriving standard platform specifications from scratch.
+- Keep scope boundaries strict: generic platform-standard binary specifications belong in `PlatformDocs` (following [PlatformDocs/docs.html](../../../PlatformDocs/docs.html)), whereas this module and `Games/<Game>/reversing/docs/` document TT Games / engine-specific formats and per-title observed builds/metadata (referencing `PlatformDocs` for the underlying platform container).
+- Still validate observed bytes against actual inspected game builds when making title-specific claims, and update `PlatformDocs` if verified new platform-level format facts are discovered.
+
 ## Documentation Hierarchy and Expected Detail
 
 Format and reversing documentation in this module uses a two-tier HTML hierarchy anchored by [reversing/docs/index.html](reversing/docs/index.html):
@@ -27,6 +35,7 @@ Format and reversing documentation in this module uses a two-tier HTML hierarchy
 1. **Parent Shared Documentation (`reversing/docs/Travellers_Tales/`):** Combines format research across all Traveller's Tales engine generations (`Nu2`, `NXG`, `DX11`, `NTT`, and `Double Eleven` remasters), documenting all container variants, version evolutions, cross-game file censuses, and unified multi-era parsing algorithms. See [Travellers_Tales/docs.html](reversing/docs/Travellers_Tales/docs.html).
 2. **Individual Game Documentation (`Games/<Game>/reversing/docs/`):** Scoped strictly to the specific format versions, headers, and directory trees observed in **that game**. Keep references to earlier or later variants in other games minimal (pointing to the parent LEGO docs for cross-game evolution). Each game's `Formats/` specification must be sufficiently detailed to build a working parser for **that game's** files alone without needing to support other games.
 3. **Standalone Clean-Room Specification Standard:** Once a format is understood, both the parent doc and every applicable game doc must act as a complete, self-contained format specification — including exact magic values, endianness rules (including hybrid big-endian containers vs. little-endian streams), byte-offset structure tables, attribute/enum decoding formulas, edge-case filtering/deduplication rules, and step-by-step **pseudocode** — so an independent engineer can implement a functional parser/converter without seeing or needing RemakeEngine's parser code.
+4. **HTML Formatting:** Format all created or modified HTML documentation files using `npx js-beautify -r <**/**/**>.html` (or `npx js-beautify <**/**/**>.html` with in-place replacement) across both `reversing/docs/` and `Games/<Game>/reversing/docs/` to ensure a consistent output format.
 
 ## Repository Boundaries
 
@@ -70,4 +79,4 @@ end
 
 ## Validation
 
-For documentation changes, check links, paths, examples, and claims against the current files. For extraction or parser changes, use focused checks that verify the affected behavior and record the inputs and limitations. For Lua operation changes, provide the exact engine command for manual validation, following the parent engine's workflow. Do not claim a command or platform was tested unless it was.
+For documentation changes, format modified HTML files with `npx js-beautify <**/**/**>.html` (using `-r` / `--replace` for in-place formatting) and check links, paths, examples, and claims against the current files. For extraction or parser changes, use focused checks that verify the affected behavior and record the inputs and limitations. For Lua operation changes, provide the exact engine command for manual validation, following the parent engine's workflow. Do not claim a command or platform was tested unless it was.

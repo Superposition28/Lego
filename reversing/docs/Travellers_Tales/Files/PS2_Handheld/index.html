@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PlayStation 2, GameCube, Nintendo DS &amp; GBA Inspected Builds</title>
+    <link rel="stylesheet" href="../../style/main.css">
+</head>
+
+<body class="doc-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../Files/index.html">Files</a><span>/</span>PS2, GameCube &amp; Handhelds</nav>
+    <h1>PS2, GameCube &amp; Handhelds Filesystem &amp; Binary Notes</h1>
+    <aside class="source-notice">
+        <p><strong>Inspected Directly:</strong> <em>LSW1</em> &amp; <em>LSW2</em> PS2 ISOs (<code>TOC v-1</code>), <em>LSW1</em> GC <code>RVZ\x01</code>, <em>LSW2</em> NDS NitroFS (<code>AL7E</code>), and <em>LSW1</em> GBA (<code>BLWE</code>).</p>
+    </aside>
+    <section class="doc-overview">
+        <p>Early console and handheld releases span TT's first PS2 <code>GAME.DAT</code> (<code>TOC v-1</code> with <code>RNC\x02</code> compression in <em>LSW1</em> and raw assets in <em>LSW2</em>), GameCube <code>GL5X4F</code> discs, and separate Amaze/Griptonite ARM handheld engines (NDS NitroFS + GBA).</p>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>PS2, GameCube &amp; Handhelds Inspected Source Images &amp; Archives</caption>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Build / IDs</th>
+                        <th>Container &amp; TOC</th>
+                        <th>Observed Formats / Counts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LEGO Star Wars: The Video Game (2005)</td>
+                        <td>SLUS_210.83 v2.00 · GAME.DAT 615.5 MB + ZZZ_DVD.DAT 1.23 GB</td>
+                        <td>TOC v-1 (1 vol, 8B nodes) · RNC\x02 (519) / Raw (3,704)</td>
+                        <td>.ani 871, .vag 796, .bsa 616, .txt 431, .scp 323, .gsc 164, .ghg 144, .rtl 113, .cut 106, .ter 106, .fpk (0x12345678)</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars: The Video Game (2005)</td>
+                        <td>GL5X4F (Maker 4F Eidos/TT) · RVZ\x01 (587 MB)</td>
+                        <td>Compressed RVZ GCM image · RVZ disc container</td>
+                        <td>RVZ\x01 disc header verified</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars: The Video Game (2005)</td>
+                        <td>BLWE (Maker 4F, Title LEGOSTARWARS, 16.0 MB ROM)</td>
+                        <td>Flat memory-mapped ARM ROM · LZ77 BIOS / custom</td>
+                        <td>.gba (16,777,216 B)</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars II: The Original Trilogy (2006)</td>
+                        <td>SLUS_214.09 v1.01 · GAME.DAT 1.74 GB + ZZZ_DVD.DAT 1.23 GB</td>
+                        <td>TOC v-1 (1 vol, 8B nodes) · None (8,600 raw)</td>
+                        <td>.an3 2,440, .bsa 1,999, .vag 1,037, .txt 628, .scp 525, .gsc 448, .ghg 255, .fpk (0x1234567A), .xsb/.xwb</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars II: The Original Trilogy (2006)</td>
+                        <td>LEGOSW2 (AL7E, Maker 64, 32.0 MB NDS ROM)</td>
+                        <td>NitroFS FNT/FAT (5 entries) · Packed rom.bin + SoundData.rom</td>
+                        <td>rom.bin (19.2 MB), SoundData.rom (3.6 MB), GameBanner.nbfc/.nbfp</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2>Key Cross-Platform Observations</h2>
+        <ul>
+            <li><em>LSW1</em> PS2 already hashes paths with uppercase FNV1a-32 (<code>4,223/4,223</code> match) and uses <code>0x12345678</code> <code>.fpk</code> before <code>0x1234567A</code> in <em>LSW2+</em>.</li>
+            <li><em>LSW2</em> NDS uses NitroFS (<code>rom.bin</code> 19.2 MB + <code>SoundData.rom</code> 3.6 MB) rather than Nu2 archives.</li>
+        </ul>
+    </section>
+</body>
+
+</html>

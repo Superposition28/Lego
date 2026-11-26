@@ -2,27 +2,38 @@
 
 
 
-[submodule "Lego_Batman"]
+[submodule "Lego Batman"]
     path = Games/Lego_Batman
-    #url = https://github.com/Superposition28/Lego_Batman.git
-[submodule "Lego_Dimensions"]
+    url = https://github.com/Superposition28/LegoBatman.git
+[submodule "Lego Dimensions"]
     path = Games/Lego_Dimensions
-    #url = https://github.com/Superposition28/Lego_Dimensions.git
-[submodule "Lego_Harry_Potter"]
+    url = https://github.com/Superposition28/LegoDimensions.git
+[submodule "Lego Harry Potter"]
     path = Games/Lego_Harry_Potter
-    url = https://github.com/Superposition28/Lego_Harry_Potter.git
-[submodule "Lego_Indiana_Jones"]
+    url = https://github.com/Superposition28/LegoHarryPotter.git
+[submodule "Lego Indiana Jones"]
     path = Games/Lego_Indiana_Jones
-    #url = https://github.com/Superposition28/Lego_Indiana_Jones.git
-[submodule "Lego_Marvel_Super_Heroes"]
+    url = https://github.com/Superposition28/LegoIndianaJones.git
+[submodule "Lego Marvel Avengers"]
+    path = Games/Lego_Marvel_Avengers
+    url = https://github.com/Superposition28/LegoMarvelAvengers.git
+[submodule "Lego Marvel Super Heroes"]
     path = Games/Lego_Marvel_Super_Heroes
-    #url = https://github.com/Superposition28/Lego_Marvel_Super_Heroes.git
-[submodule "Lego_Pirates_of_the_Caribbean"]
+    url = https://github.com/Superposition28/LegoMarvelSuperHeroes.git
+[submodule "Lego Pirates of the Caribbean"]
     path = Games/Lego_Pirates_of_the_Caribbean
-    #url = https://github.com/Superposition28/Lego_Pirates_of_the_Caribbean.git
-[submodule "Lego_Star_Wars"]
+    url = https://github.com/Superposition28/LegoPiratesOfTheCaribbean.git
+[submodule "Lego Star Wars"]
     path = Games/Lego_Star_Wars
-    #url = https://github.com/Superposition28/Lego_Star_Wars.git
-[submodule "Lego_Worlds"]
+    url = https://github.com/Superposition28/LegoStarWars.git
+
+[submodule "Lego The Hobbit"]
+    path = Games/Lego_The_Hobbit
+    url = https://github.com/Superposition28/LegoTheHobbit.git
+[submodule "Lego The Lord of the Rings"]
+    path = Games/Lego_The_Lord_of_the_Rings
+    url = https://github.com/Superposition28/LegoTheLordOfTheRings.git
+[submodule "Lego Worlds"]
     path = Games/Lego_Worlds
-    #url = https://github.com/Superposition28/Lego_Worlds.git
+    url = https://github.com/Superposition28/LegoWorlds.git
+

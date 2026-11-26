@@ -1,45 +1,134 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PlayStation Combined Filesystem</title>
+    <title>PlayStation 3 Inspected Discs &amp; Archives</title>
     <link rel="stylesheet" href="../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Files' target='_parent'>Files</a><span>/</span>PS3
-    </nav>
-    <h1>PlayStation (PS2 &amp; PS3): Combined File &amp; Directory Layout</h1>
-<aside class="source-notice"><p><strong>Platforms:</strong> Sony PlayStation 2 (ISO-9660 DVD-ROM) &amp; PlayStation 3 (BLES/BLUS Blu-ray Disc)</p></aside>
-<section class="doc-overview">
-    <h2>1. PlayStation 2 Disc Layout (Era 1–2: LSW1 &amp; LSW2)</h2>
-    <ul>
-        <li><code>SYSTEM.CNF</code> &amp; <code>SLUS_210.83</code> / <code>SLUS_214.09</code>: Boot configuration and MIPS R5900 ELF executable.</li>
-        <li><code>GAME.DAT</code>: Single archive with TOC <code>Version = -1</code> (4,223 files in <em>LSW1</em> with <code>RNC\x02</code> compressed scenes/models; 8,600 files in <em>LSW2</em>).</li>
-        <li><code>IOP/MODULES/</code> &amp; <code>FMV/</code>: IOP hardware drivers (<code>.IRX</code>), streaming SPU2 ADPCM audio banks (<code>.MIB</code>/<code>.MIH</code>), and MPEG-2 <code>.PSS</code> movies.</li>
-    </ul>
-    <h2>2. PlayStation 3 Blu-ray Layout (Era 3–4: HP 1–4, HP 5–7, LEGO Dimensions)</h2>
-    <ul>
-        <li><code>PS3_DISC.SFB</code> &amp; <code>PS3_GAME/PARAM.SFO</code>: Blu-ray disc metadata and Title ID configuration.</li>
-        <li><code>PS3_GAME/USRDIR/EBOOT.BIN</code>: Signed 64-bit Cell PPU SELF executable.</li>
-        <li><code>PS3_GAME/USRDIR/GAME*.DAT</code> (and <code>.HDR</code> + <code>INSTALL0_*.DAT</code> in <em>Dimensions</em>): Multi-slice archives (57-byte <code>PakDat v1.01</code> TOC <code>v-4</code> with <code>LZ2K</code> in <em>HP</em>; TOC <code>v-7</code> with <code>DFLT</code> and <code>CMP2</code> LZMA in <em>Dimensions</em>).</li>
-    </ul>
-    <h2>Combined USRDIR Hierarchy</h2>
-    <div class="file-list-container">
-        <h3>Directory Structure (Combined)</h3>
-        <ul class="file-list-scroll">
-            <li><code>USRDIR/EBOOT.BIN</code> (Primary 64-bit PPU executable)</li>
-            <li><code>USRDIR/audio/</code> (ATRAC3plus <code>.msf</code> music &amp; cutscene tracks; <code>level_sfx</code> banks)</li>
-            <li><code>USRDIR/chars/</code> (character <code>.cd</code> definitions, <code>.ghg</code> models, <code>.an3</code>/<code>.anm</code> animations)</li>
-            <li><code>USRDIR/cut/</code> (in-game cutscenes: camera choreography <code>*_ps3.cu2</code> / <code>.cu3</code>)</li>
-            <li><code>USRDIR/framework-data/</code> &amp; <code>gui/</code> (core engine GUI definitions, <code>.ft2</code> font atlases)</li>
-            <li><code>USRDIR/levels/</code> (story levels and hubs: <code>_nxg.gsc</code> geometry, <code>.dno</code> objects, <code>.led</code> entities, <code>.ter</code> collision)</li>
-            <li><code>USRDIR/movies/</code> (high-definition <code>.fmv</code> / <code>.pam</code> Bink cutscenes)</li>
-            <li><code>USRDIR/shaders/</code> (compiled RSX <code>.ps3_shaders</code> programs)</li>
-            <li><code>USRDIR/stuff/</code> (<code>game.txt</code> parameters, <code>text.csv</code> multilingual dialogue)</li>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../Files/index.html">Files</a><span>/</span>PS3</nav>
+    <h1>PS3 Filesystem &amp; Binary Notes</h1>
+    <aside class="source-notice">
+        <p><strong>Inspected Directly:</strong> 15 Redump/decrypted PS3 disc builds across EU/US/JP regions (multi-extent ISO-9660 + <code>PARAM.SFO</code> + <code>GAME*.DAT/.HDR</code> + <code>CMP2</code>) plus 72 extracted <code>.pkg</code> / <code>.rap</code> PSN, Demo, DLC &amp; Theme packages.</p>
+    </aside>
+    <section class="doc-overview">
+        <p>All 15 PS3 titles use unencrypted ISO-9660 filesystems (with multi-extent chaining for files &gt; 4 GiB such as <code>PAD.DAT</code> and <em>Indy 1/BM1/Indy 2</em> single-volume <code>GAME.DAT</code>) paired with NPDRM-signed <code>EBOOT.BIN</code> SELF executables. Newly inspected JP discs (<em>BM3</em>, <em>Avengers</em>) revealed regional container splits (<em>BM3 JP</em> <code>.HDR/.DAT</code> vs EU/US embedded <code>v-6</code>; <em>Avengers JP</em> omitting <code>PAD.DAT</code>).</p>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>PS3 Inspected Source Images &amp; Archives</caption>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Build / IDs</th>
+                        <th>Container &amp; TOC</th>
+                        <th>Observed Formats / Counts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LEGO Star Wars: The Complete Saga (2007)</td>
+                        <td>GAME.DAT 5.48 GB · EBOOT 5,766,536 B</td>
+                        <td>TOC v-2 (1 vol, 8B nodes) · LZ2K (471) / Raw (13,388)</td>
+                        <td>.ca3 2,915, .cbs 2,307, .msf 1,449, .txt 1,239, .scp 920, .gsc 844, .dds 520, .ghg 345, .rtl 305, .ctr 293, .tex 290</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Indiana Jones: The Original Adventures (2008)</td>
+                        <td>GAME.DAT 4.71 GB (5 extents) + 6 .PAM · EBOOT 6,362,296 B (BLES00254 / BLUS30141)</td>
+                        <td>TOC v-2 (1 vol, 8B nodes, MkDat V3.26) · LZ2K (360) / Raw (9,247) · 100% hash (9,607/9,607)</td>
+                        <td>.an3 2,523, .cbs 2,038, .msf 1,292, .txt 692, .gsc 618, .scp 323, .dds 224, .tex 217, .ghg 207, .rtl 205, .ctr 203, .bur 90</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Batman: The Videogame (2008)</td>
+                        <td>GAME.DAT 6.76 GB · EBOOT 6,576,992 B</td>
+                        <td>TOC v-2 (1 vol, 8B nodes) · LZ2K (353) / Raw (10,719)</td>
+                        <td>.an3 2,577, .cbs 1,862, .msf 1,549, .txt 865, .vag 641, .gsc 620, .scp 560, .tex 338, .ghg 296</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Indiana Jones 2: The Adventure Continues (2009)</td>
+                        <td>GAME.DAT 6.92 GB · EBOOT 10,829,848 B</td>
+                        <td>TOC v-3 (1 vol, 8B nodes) · LZ2K (5,160) / Raw (5,791)</td>
+                        <td>.pak 1,850, .txt 1,681, .msf 1,346, .gsc 1,088, .tex 968, .as 587, .cd 534, .scp 518, .led 513, .ghg 421, .dno 318</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Harry Potter: Years 1–4 (2010)</td>
+                        <td>7 vols (GAME + GAME1..6) · EBOOT 10,967,064 B</td>
+                        <td>TOC v-4 (7 vols, 8B nodes) · LZ2K (4,310) / Raw (6,917)</td>
+                        <td>.txt 2,327, .scp 1,868, .gsc 1,366, .led 1,004, .cd 632, .tex 539, .cu2 528, .as 502, .pac 486, .dno 353, .ghg 303</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Star Wars III: The Clone Wars (2011)</td>
+                        <td>5 vols (GAME + GAME0..3) · EBOOT 14,510,080 B</td>
+                        <td>TOC v-4 (5 vols, 8B nodes) · LZ2K (3,448) / Raw (4,762)</td>
+                        <td>.msf 1,246, .txt 1,205, .tex 867, .gsc 829, .led 774, .scp 597, .cd 507, .as 359, .dno 337, .ghg 302, .lua 5</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Pirates of the Caribbean (2011)</td>
+                        <td>6 vols (GAME + GAME0..4) · EBOOT 13,140,064 B</td>
+                        <td>TOC v-4 (6 vols, 8B nodes) · LZ2K (3,666) / Raw (4,869)</td>
+                        <td>.txt 1,502, .msf 1,108, .gsc 1,076, .tex 934, .led 787, .scp 779, .cd 428, .dno 322, .as 308, .pac 256, .lua 5</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Harry Potter: Years 5–7 (2011)</td>
+                        <td>10 vols (GAME + GAME0..8) · EBOOT 13,621,064 B</td>
+                        <td>TOC v-4 (10 vols, 8B nodes) · LZ2K (6,876) / Raw (7,388)</td>
+                        <td>.txt 2,422, .led 2,098, .sf 1,756, .tex 1,626, .gsc 1,494, .cd 890, .dno 633, .as 578, .pac 520, .cpd 217</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Batman 2: DC Super Heroes (2012)</td>
+                        <td>4 vols (GAME + GAME0..2) · EBOOT 16,516,280 B</td>
+                        <td>TOC v-4 (4 vols, 8B nodes) · LZ2K (6,175) / Raw (5,622)</td>
+                        <td>.led 2,262, .txt 1,697, .tex 1,109, .gsc 1,075, .pak 799, .sf 738, .dno 646, .giz 454, .cu3 206, .aib 192, .cbx 38</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO The Lord of the Rings (2012)</td>
+                        <td>7 vols (GAME + GAME0..5) · EBOOT 19,023,640 B</td>
+                        <td>Early TOC v-5 (7 vols, 12B nodes, no .HDR) · DFLT (9,767) / Raw (5,695)</td>
+                        <td>.led 2,483, .ps3_shaders 1,846, .gsc 1,597, .pak 1,384, .tex 1,362, .txt 1,320, .dno 742, .sf 513, .cpj 10</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Marvel Super Heroes (2013)</td>
+                        <td>14 vols (GAME + GAME0..12) · EBOOT 24,187,056 B</td>
+                        <td>Early TOC v-5 (14 vols, 12B nodes, no .HDR) · DFLT (16,499) / Raw (16,855)</td>
+                        <td>.led 5,210, .cbx 4,717, .msf 3,841, .txt 2,828, .pak 2,495, .ps3_shaders 2,051, .nxg_textures 2,050, .an4 (in .pak)</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO The Hobbit (2014)</td>
+                        <td>5 .HDR/.DAT pairs + 15.36 GB PAD.DAT · EBOOT 26,444,040 B</td>
+                        <td>Late TOC v-5 (5 vols, 12B nodes + .HDR) · DFLT (17,776) / Raw (24,615)</td>
+                        <td>.led 6,926, .msf 5,239, .an4 4,180, .res 4,078, .cbx 3,866, .tex 2,979, .ps3_shaders 2,267, .nxg_textures 2,267, .krw 77</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Batman 3: Beyond Gotham (2014)</td>
+                        <td>EU/US: 4 vols (GAME+GAME0..2) + 16.16 GB PAD.DAT · EBOOT 28,535,960 B (BLES02033 / BLUS31434) · JP: 3 .HDR/.DAT (BLJM61243, EBOOT 28,669,024 B)</td>
+                        <td>TOC v-6 (12B nodes + <code>meta &gt;&gt; 24</code> sub-off + collision table + dual <code>ROTV</code> MD5) · DFLT (13,895) / Raw (38,262) · 100% hash (52,155 direct + 2/2 coll)</td>
+                        <td>.cbx 17,084, .an4 5,209, .res 4,566, .led 4,082, .msf 3,629, .txt 2,545, .tex 2,450, .nxg_textures 2,192, .ps3_shaders 2,190, .gsc 1,771, .as 1,305, .cd 862</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Dimensions (2015)</td>
+                        <td>7 .HDR/.DAT + 3 CMP2 (INSTALL0*.DAT) + 12.49 GB PAD.DAT · EBOOT 32,733,296 B</td>
+                        <td>TOC v-7 (10 logical vols, 12B nodes) · DFLT (28,351) / Raw (96,365) inside CMP2 LZMA</td>
+                        <td>.an4 28,552, .cbx 27,714, .res 15,119, .as 8,124, .led 6,764, .msf 6,096, .tex 6,036, .nxg_textures 4,833, .ps3_shaders 4,627, .lxfml 10, .baml 6</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Marvel's Avengers (2016)</td>
+                        <td>EU/US: 6 .HDR/.DAT pairs + 15.72 GB PAD.DAT · EBOOT 29,650,840 B (BLES02169 / BLUS31550) · JP: 6 .HDR/.DAT, no PAD.DAT (BLJM61329, EBOOT 29,651,816 B)</td>
+                        <td><code>.CC40TAD v-8</code> (BE header, 10B nodes, 16B entries + dual <code>ROTV</code> MD5) · Raw (56,677) / DFLT (18,575) / ZIPX RC4 (5,980) · 100% hash (81,232/81,232)</td>
+                        <td>.cbx 34,711, .an4 7,027, .led 6,270, .res 5,675, .txt 4,116, .msf 3,922, .tex 3,036, .nxg_textures 2,983, .ps3_shaders 2,766, .gsc 2,272, .grs 32</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2>PS3 PKG / RAP Distribution Census (72 Packages Across 10 Games)</h2>
+        <p>Inspecting 72 extracted <code>.pkg</code> and <code>.rap</code> packages alongside the disc releases confirmed uniform Sony PS3 NPDRM packaging (<code>0x7F504B47</code>, big-endian item count at <code>+0x14</code>, Content ID at <code>+0x30..0x54</code>): free Demos set <code>drm_type=3</code> (mostly license-free, though several EU Demos such as <em>IJ2</em>, <em>HP1–4</em>, and <em>PotC</em> ship <code>drm=2</code> + <code>.rap</code>), whereas digital PSN full games (<em>BM2</em>, <em>BM3</em>, <em>HP5–7</em>, <em>PotC</em>, <em>LOTR</em>, <em>Marvel 1</em>, <em>Avengers</em>, <em>Hobbit</em>), DLC packs (<em>BM2</em>, <em>LOTR</em>, <em>Marvel 1</em>, <em>Hobbit</em>, <em>Dimensions</em>), and XMB Themes (<em>Marvel 1</em> <code>content_type=9</code>) use <code>drm_type=2</code> paired with 16-byte <code>.rap</code> license keys.</p>
+        <h2>Key PS3 Takeaways</h2>
+        <ul>
+            <li>Hash verification reaches 100% on 14/15 disc titles (including <em>BM3</em> 52,155 direct + 2 collision-table entries and <em>Avengers</em> 81,232/81,232) and 124,712/124,716 on <em>Dimensions</em>.</li>
+            <li>Compression progresses from <code>LZ2K</code> (<em>TCS</em>..<em>BM2</em>) to bit-2-toggled <code>DFLT</code> (<em>LOTR</em>..<em>Avengers</em>), adding per-file RC4-encrypted <code>ZIPX</code> (5,980 scripts/text assets) in <em>Avengers</em>.</li>
         </ul>
-    </div>
-</section>
+    </section>
 </body>
+
 </html>

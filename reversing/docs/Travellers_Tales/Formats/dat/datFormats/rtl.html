@@ -1,28 +1,105 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.rtl (Runtime Point & Directional Light List)</title>
+    <title>.RTL (Runtime &amp; Baked Level Lighting Tables)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.rtl
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.rtl (Runtime Lights)</nav>
+    <h1>.RTL (Runtime Point/Directional Lighting Tables)</h1>
+    <aside class="source-notice">
+        <p><strong>Stride Verified Directly:</strong> <em>LSW1</em> Xbox (ver 4), <em>TCS</em> PS3 (305 files, ver 5, stride <code>0x8C</code> = 140 B), <em>Batman 1</em> PS3 (200 files, ver 5, stride <code>0x8C</code>), <em>Indy 2</em> (17 files).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Scene Lighting · Era 1–3a (LSW1 through Indy 2)</p>
+        <p>Fixed-stride binary lighting tables defining light positions, directional vectors, RGBA colors, radii, and attenuation curves in Era 1–3a levels before LTMU/HSEM lighting moved into .gsc/.led.</p>
+        <dl>
+            <dt>Extension</dt>
+            <dd><code>.rtl</code></dd>
+            <dt>Header</dt>
+            <dd><code>u32le version</code> (<code>4</code> in LSW1, <code>5</code> in TCS/BM1)</dd>
+            <dt>Record Stride</dt>
+            <dd><code>140</code> bytes (<code>0x8C</code>) per light entry in version 5</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.rtl (Runtime Point & Directional Light List)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> 3D Graphics & Scene · <strong>Scope:</strong> Universal Across Era 1–4 (LSW1, LSW2, HP 1–4, HP 5–7, Batman 2, Dimensions)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>Per-room runtime lighting table defining point lights, directional suns, ambient spherical harmonics, and shadow caster flags.</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.rtl</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>Binary Light Array</code></dd>
-        <dt>Subsystem</dt><dd>3D Graphics & Scene</dd>
-        <dt>Cross-Game Scope</dt><dd>Universal Across Era 1–4 (LSW1, LSW2, HP 1–4, HP 5–7, Batman 2, Dimensions)</dd>
-    </dl>
-</section>
-<h2>Overview</h2>
-<p>Appears alongside every level's <code>.gsc</code> and <code>.ter</code> from <em>LSW1</em> (163 files) through <em>LEGO Dimensions</em> (1,123 files).</p>
+    <section id="overview" class="doc-overview">
+        <h2>Binary Layout (Version 5 in <em>TCS</em> &amp; <em>Batman 1</em>)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.rtl Light Entry Stride (140 B = 0x8C, Starting at +0x04)</caption>
+                <thead>
+                    <tr>
+                        <th>Offset (within Record)</th>
+                        <th>Size</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>+0x00</code> (file <code>0x04</code>)</td>
+                        <td>12</td>
+                        <td><code>f32le[3]</code></td>
+                        <td>World position / direction float vector.</td>
+                    </tr>
+                    <tr>
+                        <td><code>+0x0C..+0x37</code></td>
+                        <td>44</td>
+                        <td><code>f32le[]</code></td>
+                        <td>Normalized RGB color channels, specular/ambient multipliers, and cone/falloff floats.</td>
+                    </tr>
+                    <tr>
+                        <td><code>+0x38..+0x8B</code></td>
+                        <td>84</td>
+                        <td><code>f32le/u32le</code></td>
+                        <td>Radius, flags, flicker/shadow parameters, and end padding (<code>0x8C</code> total stride verified between record 0 at <code>0x04</code> and record 1 at <code>0x90</code>).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/gsc.html"><code>.gsc Scenes</code></a> — Loaded per level subfolder in Era 1–3a.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li>File length <code>20,356</code> B matches a fixed maximum light buffer size (145 records + trailer bytes). Zero out trailing unused light slots where flags/radius == 0.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseRtl(buf):
+    ver = ReadU32LE(buf, 0)
+    stride = 140
+    lights = []
+    for off in range(4, len(buf) - stride + 1, stride):
+        px, py, pz = ReadF32LE3(buf, off)
+        lights.append({pos: (px, py, pz)})
+    return {version: ver, lights: lights}</code></pre>
+    </section>
+
 </body>
+
 </html>

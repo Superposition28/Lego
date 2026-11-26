@@ -1,76 +1,573 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Traveller's Tales (TT Games) Shared Architecture - Combined Files Architecture</title>
+    <title>TT Games Engine History, Empirical Census &amp; Dependency Graph</title>
     <link rel="stylesheet" href="../style/main.css">
 </head>
-<body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../index.html#home' target='_parent'>Documentation</a><span>/</span>Files
-    </nav>
-    <h1>Traveller's Tales (TT Games) Shared Architecture — Game Files &amp; Combined Directory Architecture</h1>
-<aside class="source-notice"><p><strong>Architecture Concept:</strong> Unified representation of Source and Extracted Archive Data</p></aside>
-<section class="doc-overview">
-    <h2>The Combined Virtual Filesystem Concept</h2>
-    <p>In retail distributions of TT Games titles, game assets are packed inside monolithic or multi-slice archive volumes (<code>GAME*.DAT</code>, <code>INSTALL*.DAT</code>, or <code>*.datwin</code>) or stored directly in the Xbox XDVDFS partition (in <em>LSW1</em> and <em>LSW2</em> Xbox/Xbox 360). This documentation presents the game's file structure using a <strong>combined virtual filesystem</strong> where archive packages are transparently replaced by their extracted directory trees.</p>
-    <h2>1. Traveller's Tales Engine Architecture Evolution (2005–2024)</h2>
-    <div class="table-scroll"><table class="format-counts">
-    <thead><tr><th>Generation</th><th>Engine Codename</th><th>Years</th><th>Titles</th><th>Key Container &amp; Format Signatures</th></tr></thead>
-    <tbody>
-    <tr><td><strong>Era 1</strong></td><td>Nu2 / <code>NUP</code> Engine</td><td>2005</td><td><em>LEGO Star Wars: The Video Game</em></td><td><code>GAME.DAT</code> TOC <code>v-1</code> (PS2 <code>RNC\x02</code>); loose <code>.nux</code>/<code>.hgx</code>/<code>.ani</code>/<code>.bsa</code> on Xbox; <code>.nup</code>/<code>.hgp</code> on PC/GCN.</td></tr>
-    <tr><td><strong>Era 2</strong></td><td>Nu2 / <code>PC.GHG</code> Classic</td><td>2006–2008</td><td><em>LSW2</em>, <em>TCS</em>, <em>Indiana Jones 1</em>, <em>Batman 1</em></td><td><code>GAME.DAT</code> TOC <code>v-1</code>..<code>v-3</code>; <code>.gsc</code>/<code>.ghg</code> (<code>NU20</code> v<code>0x28</code>..<code>0x40</code>), <code>.an3</code>, <code>.cu2</code>, <code>.fpk</code> (<code>RFPK</code>); <code>360_exlist</code> on Xbox 360.</td></tr>
-    <tr><td><strong>Era 3a–3c</strong></td><td>NXG Engine (<em>Creator</em> / <em>Builder</em> / <em>Gotham</em>)</td><td>2009–2014</td><td><em>Indy 2</em>, <em>HP 1–4</em>, <em>Clone Wars</em>, <em>PotC</em>, <em>HP 5–7</em>, <em>Batman 2</em>, <em>LOTR</em>, <em>Marvel 1</em>, <em>Hobbit</em></td><td>57-byte <code>PakDat v1.01</code>/<code>v1.02</code> (TOC <code>v-4</code>/<code>v-5</code>, <code>LZ2K</code>); <code>.CC4</code>+<code>HSER</code>+<code>02UN</code> resources; <code>StreamInfo</code> <code>.cd</code>/<code>.cpd</code>/<code>.as</code>/<code>.apj</code>/<code>.led</code>; <code>.dno</code>, <code>.giz</code>, <code>.sf</code>, <code>.sub</code> (from <em>Batman 2</em>).</td></tr>
-    <tr><td><strong>Era 4a–4b</strong></td><td>DX11 / <em>Cinema</em> / <em>TFA</em> Engine</td><td>2014–2019</td><td><em>Batman 3</em>, <em>Jurassic World</em>, <em>LEGO Dimensions</em>, <em>Avengers</em>, <em>TFA</em>, <em>LEGO Worlds</em>, <em>Marvel 2</em>, <em>DC Super-Villains</em></td><td>Split <code>.HDR</code> + <code>.DAT</code> (TOC <code>v-6</code>..<code>v-12</code>, 12B <code>NameNodes</code>, <code>DFLT</code>, <code>CMP2</code> LZMA, <code>.CC40TAD</code>); compiled Lua 5.1 (<code>.lua</code>); <code>.cu3</code>; NFC <code>.bin</code>/<code>.por</code>/<code>.ats</code> in <em>Dimensions</em>; <code>.lxfml</code> in <em>Worlds</em>.</td></tr>
-    <tr><td><strong>Era 5</strong></td><td>NTT Engine</td><td>2022</td><td><em>LEGO Star Wars: The Skywalker Saga</em></td><td><code>.CC40TAD</code> TOC <code>v-12</code> with 64-bit FNV-1a hashes and Oodle Mermaid (<code>OODL</code>) compression.</td></tr>
-    <tr><td><strong>Remaster</strong></td><td>Double Eleven DX11 x64</td><td>2016–2024</td><td><em>LEGO Harry Potter Collection</em> (PS4 / Switch / PC Steam)</td><td><code>.datwin</code> (TOC <code>v-1</code> with 24B entries, <code>0x12345678</code> canary, <code>LZHAM</code>) + <code>.pkiwin</code>/<code>.pkdwin</code> (zlib).</td></tr>
-    </tbody>
-    </table></div>
 
-    <h2>2. Cross-Game Format Census Across Inspected Archives</h2>
-    <p>Empirical file counts measured directly from extracted TOCs and disc images across six inspected titles:</p>
-    <div class="table-scroll"><table class="format-counts">
-    <thead><tr><th>Format / Extension</th><th>Subsystem</th><th>LSW1 (2005 Xbox/PS2)</th><th>LSW2 (2006 PS2/Xbox/X360)</th><th>HP 1–4 (2010 PS3/X360/PC)</th><th>HP 5–7 (2011 PS3/X360/PC)</th><th>Batman 2 (2012 WinSteam)</th><th>Dimensions (2015 PS3)</th></tr></thead>
-    <tbody>
-    <tr><td><code>.gsc</code> / <code>.nux</code> / <code>.nx2</code></td><td>Scene Geometry</td><td>259 (<code>.nux</code>) + 18 (<code>.nus</code>)</td><td>448 (PS2) / 474 (<code>.nx2</code>) / 500 (X360)</td><td>610</td><td>436</td><td>816</td><td>1,445</td></tr>
-    <tr><td><code>.ghg</code> / <code>.hgx</code> / <code>.hx2</code></td><td>Skeletal Models</td><td>163 (<code>.hgx</code>)</td><td>255 (PS2) / 261 (<code>.hx2</code>) / 254 (X360)</td><td>1,455</td><td>1,246</td><td>2,265</td><td>7,414</td></tr>
-    <tr><td><code>.tex</code> / <code>.nxg_textures</code></td><td>Standalone Textures</td><td>Inline in <code>.nux</code>/<code>.hgx</code></td><td>Inline in <code>.gsc</code>/<code>.ghg</code></td><td>4,487</td><td>3,395</td><td>4,715</td><td>14,209</td></tr>
-    <tr><td><code>.an3</code> / <code>.ca3</code> / <code>.ani</code> / <code>.anm</code></td><td>Animations</td><td>973 (<code>.ani</code>)</td><td>2,440 (<code>.an3</code>) / 26 (<code>.ca3</code>)</td><td>1,612 (<code>.anm</code>/<code>.an3</code>)</td><td>2,180</td><td>213 (<code>.anm</code>)</td><td>19,580 (<code>.an3</code>)</td></tr>
-    <tr><td><code>.bsa</code> / <code>.anl</code></td><td>Era 1–2 Blend / Lists</td><td>679 (<code>.bsa</code>)</td><td>1,999 (<code>.bsa</code>) + 184 (<code>.anl</code>)</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
-    <tr><td><code>.cd</code> / <code>.cpd</code> / <code>.as</code> / <code>.apj</code></td><td><code>StreamInfo</code> Character</td><td>—</td><td>—</td><td>1,120+</td><td>1,340+</td><td>1,671</td><td>7,068</td></tr>
-    <tr><td><code>.led</code></td><td><code>StreamInfo</code> Level Entities</td><td>—</td><td>—</td><td>890</td><td>740</td><td>564</td><td>2,616</td></tr>
-    <tr><td><code>.dno</code></td><td>Dynamic Brick Objects</td><td>—</td><td>—</td><td>6,858</td><td>5,204</td><td>3,240</td><td>17,672</td></tr>
-    <tr><td><code>.giz</code> / <code>.git</code></td><td>Gizmos &amp; Camera Options</td><td>—</td><td>—</td><td>1,210</td><td>980</td><td>1,012</td><td>3,643</td></tr>
-    <tr><td><code>.ter</code> / <code>.ctr</code></td><td>Terrain Collision Octree</td><td>149</td><td>140 (<code>.ter</code>) / 179 (<code>.ctr</code>)</td><td>312</td><td>245</td><td>564</td><td>1,148</td></tr>
-    <tr><td><code>.rtl</code></td><td>Runtime Light Lists</td><td>163</td><td>156 (PS2) / 178 (X360)</td><td>305</td><td>240</td><td>524</td><td>1,123</td></tr>
-    <tr><td><code>.ai2</code> / <code>.aib</code></td><td>AI Navigation Mesh</td><td>120 (<code>.ai2</code>)</td><td>45 (<code>.ai2</code>)</td><td>195 (<code>.ai2</code>)</td><td>160 (<code>.ai2</code>)</td><td>85 (<code>.ai2</code>) + 284 (<code>.aib</code>)</td><td>856 (<code>.aib</code>)</td></tr>
-    <tr><td><code>.scp</code> / <code>.sf</code> / <code>.lua</code></td><td>Gameplay Scripts</td><td>500 (<code>.scp</code>)</td><td>525 (<code>.scp</code>)</td><td>1,405 (<code>.scp</code>) + 677 (<code>.sf</code>)</td><td>412 (<code>.scp</code>) + 4,296 (<code>.sf</code>)</td><td>324 (<code>.scp</code>) + 5,274 (<code>.sf</code>)</td><td>9,858 (<code>.lua</code>) + 222 (<code>.sf</code>)</td></tr>
-    <tr><td><code>.cut</code> / <code>.cu2</code> / <code>.cc2</code> / <code>.cu3</code></td><td>Cutscene Timelines</td><td>184 (<code>.cut</code>)</td><td>76 (<code>.cu2</code> / <code>.cc2</code>)</td><td>401 (<code>.cu2</code>)</td><td>250 (<code>.cu2</code>)</td><td>245 (<code>.cu2</code>)</td><td>190 (<code>.cu3</code>)</td></tr>
-    <tr><td><code>.sub</code></td><td>Voice Subtitles</td><td>—</td><td>—</td><td>—</td><td>—</td><td>2,408</td><td>15,826</td></tr>
-    <tr><td><code>.por</code> / <code>.ats</code> / NFC <code>.bin</code></td><td>Dimensions Toy Pad</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>644 (<code>.por</code>) + 1,497 (<code>.ats</code>) + 47 (<code>.bin</code>)</td></tr>
-    </tbody>
-    </table></div>
-    <h2>Core Subsystem Directory Tree</h2>
-    <div class="table-scroll"><table class="format-counts">
-    <thead><tr><th>Virtual Directory</th><th>Subsystem Role</th><th>Primary File Types</th></tr></thead>
-    <tbody>
-    <tr><td><code>audio/</code> / <code>IOP/</code></td><td>Voice streams, soundtrack music, sound effect dictionaries, and audio bus curves.</td><td><code>.msf</code>, <code>.xma</code>, <code>.ogg</code>, <code>.vag</code>, <code>.wavx</code>, <code>.cfg</code>, <code>.sfx</code></td></tr>
-    <tr><td><code>chars/</code></td><td>Minifigures, creatures, vehicles, character definitions, and animations.</td><td><code>.ghg</code>/<code>.hgx</code>/<code>.hx2</code>, <code>.cd</code>, <code>.cpd</code>, <code>.as</code>, <code>.an3</code>/<code>.ani</code>/<code>.anm</code>, <code>.bsa</code>, <code>.tex</code></td></tr>
-    <tr><td><code>levels/</code></td><td>Story chapters, hub worlds, collision octrees, runtime lights, and level scripts.</td><td><code>.gsc</code>/<code>.nux</code>/<code>.nx2</code>, <code>.ter</code>/<code>.ctr</code>, <code>.rtl</code>, <code>.dno</code>, <code>.led</code>, <code>.giz</code>, <code>.git</code>, <code>.scp</code>, <code>.sf</code>, <code>.lua</code></td></tr>
-    <tr><td><code>cut/</code></td><td>In-engine cutscene choreography, actor staging, camera switching, and subtitle timings.</td><td><code>.cut</code>, <code>.cu2</code>/<code>.cc2</code>, <code>.cu3</code>, <code>.sub</code></td></tr>
-    <tr><td><code>gui/</code> / <code>framework-data/</code></td><td>Menu pages, pause screens, HUD stud counters, button prompts, and font sheets.</td><td><code>.ft2</code>, <code>.gip</code>, <code>.gix</code>, <code>.gil</code>, <code>.tex</code></td></tr>
-    <tr><td><code>stuff/</code></td><td>Global configuration, gameplay constants, particle templates, splines, and localization tables.</td><td><code>text.csv</code>, <code>game.txt</code>, <code>levels.txt</code>, <code>.ptl</code>, <code>.par</code>, <code>.spl</code></td></tr>
-    <tr><td><code>scripts/</code> / <code>ai/</code></td><td>Global mission scripting, AI navigation graphs, and Lua bytecode packages.</td><td><code>.ai2</code>, <code>.aib</code>, <code>.scp</code>, <code>.sf</code>, <code>.lua</code>, <code>ai.pak</code></td></tr>
-    <tr><td><code>movies/</code> / <code>FMV/</code></td><td>Pre-rendered FMVs, company logos, attract mode gameplay reels, and end credits.</td><td><code>.fmv</code>, <code>.bik</code>, <code>.pam</code>, <code>.pss</code>, <code>.xmv</code></td></tr>
-    </tbody>
-    </table></div>
-</section>
-<h2>Platform Implementations</h2>
-<ul>
-    <li><a href="../index.html#Files-PS3" target="_parent">PlayStation (PS2 &amp; PS3) Combined Filesystem</a></li>
-    <li><a href="../index.html#Files-Xbox360" target="_parent">Xbox (Original Xbox &amp; Xbox 360) Combined Filesystem</a></li>
-    <li><a href="../index.html#Files-PC" target="_parent">PC (Windows Retail &amp; Steam Remaster) Combined Filesystem</a></li>
-</ul>
+<body class="doc-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../index.html#home" target="_parent">Documentation</a><span>/</span>Files</nav>
+    <h1>Traveller&#x27;s Tales Engine History (2005–2024), Empirical Census &amp; Dependency Graph</h1>
+    <aside class="source-notice">
+        <p><strong>Empirical Master Dataset:</strong> Directly measured across 15 PS3 ISOs (<code>BLUS30079</code>–<code>BLUS31550</code> + <code>CMP2</code> install volumes), Original Xbox / Xbox 360 ISOs, and PC builds, supplemented where noted by reference parsers for <em>LEGO Worlds</em>.</p>
+    </aside>
+    <section class="doc-overview">
+        <h2>1. History of the Traveller's Tales Engine &amp; Format Evolution (2005–2024)</h2>
+        <p>Across 19 years of LEGO titles, Traveller's Tales evolved from loose uncompressed Nu2 assets on Original Xbox/PS2 into monolithic hashed <code>.DAT</code> containers with custom lossless codecs (<code>LZ2K</code>, bit-2-toggled <code>DFLT</code>, <code>CMP2</code> LZMA, <code>Deflate_v1.0</code>), reflection-driven gameplay schemas (<code>EdFile</code>), and finally shader-and-resource-graph engines (<code>HSEM</code>, <code>.CC4HSER</code>, and <code>.CC40TAD</code>). The table below maps every confirmed architectural transition.</p>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>Seven Generations of TT Games Engines (2005–2024)</caption>
+                <thead>
+                    <tr>
+                        <th>Era / Period</th>
+                        <th>Representative Inspected Titles</th>
+                        <th>Platforms</th>
+                        <th>Key Container, Geometry, Script &amp; Audio Changes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1. Nu2 Classic (2005)</td>
+                        <td><em>LEGO Star Wars: The Video Game</em></td>
+                        <td>PS2, Xbox, GC, GBA, PC</td>
+                        <td>First <code>GAME.DAT</code> (PS2 <code>TOC v-1</code>, 4,223 entries, 519 <code>RNC\x02</code>); Xbox keeps loose XDVDFS files (<code>.nux</code>, <code>.hgx</code>, <code>.ani</code>, <code>.bsa</code>, <code>.ter</code>, <code>.wavx</code>).</td>
+                    </tr>
+                    <tr>
+                        <td>2. Nu2 HD / MkDat (2006–2008)</td>
+                        <td><em>LSW II</em>, <em>TCS</em>, <em>Indy 1</em>, <em>Batman 1</em></td>
+                        <td>Xbox, X360, PS3, PC</td>
+                        <td>Single-volume <code>GAME.DAT</code> (<code>MkDat V3.26</code> TOC <code>v-2</code>/<code>v-3</code>, <code>LZ2K</code>); <code>NU20</code>/<code>02UN</code> models; <code>ANI4</code>/<code>ANI9</code> (<code>.an3</code>); <code>.cbs</code>/<code>.cu2</code> timelines; <code>.vag</code>/<code>.msf</code>/<code>.xma</code>; <code>.ufn/.gra/.csc</code> (<em>Indy 1</em>).</td>
+                    </tr>
+                    <tr>
+                        <td>3a. Early NXG / Creator (2009–2010)</td>
+                        <td><em>Indiana Jones 2</em>, <em>Harry Potter 1–4</em></td>
+                        <td>PS3, X360, PC</td>
+                        <td><code>OFNI</code> <code>v0x0A</code> + early <code>HSEM</code>; <code>EdFile</code> Cornwall reflection (<code>.cd</code>, <code>.as</code>, <code>.apj</code>, <code>.led</code>); <code>PinnerDynamicsObj</code> (<code>.dno</code>); multi-vol <code>PakDat v1.01</code> TOC <code>v-4</code>; nested <code>.pac</code>/<code>.pak</code> anim packs.</td>
+                    </tr>
+                    <tr>
+                        <td>3b. Mature NXG (2011)</td>
+                        <td><em>Clone Wars</em>, <em>PotC</em>, <em>HP 5–7</em></td>
+                        <td>PS3, X360, PC</td>
+                        <td><code>SERIALISED</code> <code>.dno</code> (2011+); Lua UI scripts (<code>.lua</code>); <code>.cpd</code> + <code>ScriptFu</code> (<code>.sf</code> replacing <code>.scp</code> in <em>HP 5–7</em>); <code>OFNI</code> <code>v0x12</code> / <code>HSEM</code> transition.</td>
+                    </tr>
+                    <tr>
+                        <td>3c. Open-World NXG &amp; Bridge (2012–2013)</td>
+                        <td><em>Batman 2</em>, <em>LOTR</em>, <em>Marvel 1</em></td>
+                        <td>PS3, X360, PC</td>
+                        <td><code>HSEM</code> everywhere + <code>LTMU</code>/<code>TDML</code>/<code>PSID</code>/<code>LOGH</code>; <code>!B0X</code> <code>.cbx</code> speech &amp; <code>.cu3</code>/<code>.aib</code> (<em>BM2</em>); early TOC <code>v-5</code> + <code>DFLT</code> deflate (<em>LOTR</em>); <em>Marvel 1</em> bridges into <code>DXTV</code>, <code>.an4</code>, <code>.nxg_textures</code>, <code>.ps3_shaders</code>, <code>.nvm</code>, <code>.fst</code>, <code>.glm</code>.</td>
+                    </tr>
+                    <tr>
+                        <td>4. Late NXG / Zeus (2014–2016)</td>
+                        <td><em>The Hobbit</em>, <em>Batman 3</em>, <em>Dimensions</em>, <em>Marvel's Avengers</em></td>
+                        <td>PS3, X360, PS4, Wii U</td>
+                        <td>Paired <code>.HDR</code>/<code>.DAT</code> &amp; embedded <code>v-6</code> (sub-block <code>meta</code> offsets, <code>ROTV</code> MD5 tables) + <code>PAD.DAT</code> + <code>CMP2</code> LZMA install vols + TEA ToyTag NFC <code>.bin</code> (56 tags); <code>.CC40TAD v-8</code> + <code>ZIPX</code> RC4 (<em>Avengers</em>); <code>.CC4HSER v6/v8</code> <code>.res</code>; <code>.an4</code> <code>Deflate_v1.0</code>; <code>LWRK</code> <code>.krw</code>; <code>.grs</code> grass; <code>.lxfml</code> &amp; <code>.baml</code>.</td>
+                    </tr>
+                    <tr>
+                        <td>5. NTT &amp; D11 Remasters (2016–2024)</td>
+                        <td><em>LEGO Worlds</em>, <em>Skywalker Saga</em> [Ref] · <em>HP Collection</em> (2024)</td>
+                        <td>PC x64, Modern Consoles</td>
+                        <td><code>.CC40TAD</code> TOC <code>v-10/-11</code> &amp; <code>ZIPX</code> RC4 [Ref]; 2024 Double Eleven x64 <code>.datwin</code> (<code>0x12345678</code> canary, LZHAM) + <code>.pkiwin</code>/<code>.pkdwin</code> (zlib).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2>2. Master Cross-Format Relationship &amp; Dependency Graph</h2>
+        <p>No TT Games format exists in isolation: runtime loaders mount <code>.DAT</code>/<code>.HDR</code> containers, resolve virtual paths via uppercase <code>FNV1a-32</code> (<code>TtPathHash</code>), load scene/character manifests (<code>.res</code> / <code>EdFile</code>), decode <code>HSEM</code> or <code>NU20</code> geometry, bind material texture slots, and stream skeletal/facial/audio sub-resources.</p>
+
+        <div class="relationship-flow" style="overflow-x:auto;">
+            <svg viewBox="0 0 980 500" width="100%" style="max-width:960px;height:auto;display:block;margin:0 auto;font-family:monospace;" role="img" aria-label="TT Games Cross-Format Dependency Graph">
+                <defs>
+                    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 10 5 L 0 9 z" fill="#7aa2ff" />
+                    </marker>
+                    <style>
+                        .bx {
+                            fill: #1b222d;
+                            stroke: #4b6587;
+                            stroke-width: 1.5;
+                            rx: 6;
+                        }
+
+                        .bx-root {
+                            fill: #232b38;
+                            stroke: #58a6ff;
+                            stroke-width: 2;
+                            rx: 6;
+                        }
+
+                        .bx-leaf {
+                            fill: #19241e;
+                            stroke: #3fb950;
+                            stroke-width: 1.5;
+                            rx: 6;
+                        }
+
+                        .bx-era4 {
+                            fill: #282118;
+                            stroke: #d29922;
+                            stroke-width: 1.5;
+                            rx: 6;
+                        }
+
+                        .t-h {
+                            fill: #f0f4f8;
+                            font-size: 12px;
+                            font-weight: bold;
+                        }
+
+                        .t-s {
+                            fill: #9ba7b3;
+                            font-size: 10px;
+                        }
+
+                        .ln {
+                            stroke: #7aa2ff;
+                            stroke-width: 1.4;
+                            fill: none;
+                            marker-end: url(#arr);
+                        }
+
+                        .ln-d {
+                            stroke: #d29922;
+                            stroke-width: 1.3;
+                            stroke-dasharray: 4 3;
+                            fill: none;
+                            marker-end: url(#arr);
+                        }
+                    </style>
+                </defs>
+
+                <!-- Tier 0: Boot & Physical Package -->
+                <rect class="bx-root" x="20" y="195" width="145" height="90" />
+                <text class="t-h" x="32" y="218">Boot &amp; Media</text>
+                <text class="t-s" x="32" y="236">EBOOT.BIN / .xex / .exe</text>
+                <text class="t-s" x="32" y="252">PS3 .pkg + 16B .rap</text>
+                <text class="t-s" x="32" y="268">ISO-9660 / XDVDFS</text>
+
+                <!-- Tier 1: Archive Containers -->
+                <rect class="bx-root" x="210" y="160" width="165" height="160" />
+                <text class="t-h" x="222" y="183">Virtual Archives</text>
+                <text class="t-s" x="222" y="203">.DAT + .HDR (v-1..-7)</text>
+                <text class="t-s" x="222" y="219">CMP2 LZMA INSTALL*.DAT</text>
+                <text class="t-s" x="222" y="235">.datwin / .pkiwin / .pkdwin</text>
+                <text class="t-s" x="222" y="251">.CC40TAD (Worlds [Ref])</text>
+                <text class="t-s" x="222" y="273">Comp: LZ2K / DFLT^04 /</text>
+                <text class="t-s" x="222" y="289">ZIPX(RC4) / RNC2 / LZHAM</text>
+                <text class="t-s" x="222" y="305">Hash: FNV1a-32 (TtPathHash)</text>
+
+                <path class="ln" d="M 165 240 L 210 240" />
+
+                <!-- Tier 2A: Resource Manifest & Sub-Archives -->
+                <rect class="bx-era4" x="420" y="25" width="230" height="72" />
+                <text class="t-h" x="432" y="47">.res (.CC4HSER Resource Graph)</text>
+                <text class="t-s" x="432" y="65">NuFileTree deps (Hobbit/Dim/Worlds)</text>
+                <text class="t-s" x="432" y="81">Preloads .ghg/.gsc/.an4/.cbx/.tex</text>
+
+                <!-- Tier 2B: EdFile Scene / Char / Proj -->
+                <rect class="bx" x="420" y="118" width="230" height="86" />
+                <text class="t-h" x="432" y="140">EdFile StreamInfo (.cd/.cpd/.as/.apj/.cpj)</text>
+                <text class="t-s" x="432" y="158">Reflected v17..v30 (OLST + TypeList)</text>
+                <text class="t-s" x="432" y="174">Binds chars, props, levels &amp; gameplay</text>
+                <text class="t-s" x="432" y="190">Routes .led/.sf/.scp/.txt/.giz/.sub</text>
+
+                <!-- Tier 2C: Rendering Meshes -->
+                <rect class="bx" x="420" y="222" width="230" height="90" />
+                <text class="t-h" x="432" y="244">3D Meshes (.gsc / .ghg / .nux / .hgx)</text>
+                <text class="t-s" x="432" y="262">Nu20 / 02UN / OFNI / HSEM + DXTV</text>
+                <text class="t-s" x="432" y="278">LTMU/TDML mtls, PSID cmds, LOGH LODs</text>
+                <text class="t-s" x="432" y="294">Refs tex slots, shaders &amp; bone binds</text>
+
+                <!-- Tier 2D: Spatial / Dynamics / Cutscenes -->
+                <rect class="bx" x="420" y="330" width="230" height="72" />
+                <text class="t-h" x="432" y="352">World &amp; AI (.dno/.giz/.por/.nvm/.aib)</text>
+                <text class="t-s" x="432" y="370">Physics dynos, TROP portals, CC4 navmesh</text>
+                <text class="t-s" x="432" y="386">Crowd paths (.fst/.glm), spline (.spl)</text>
+
+                <!-- Tier 2E: Audio & ToyTag Hardware -->
+                <rect class="bx" x="420" y="420" width="230" height="65" />
+                <text class="t-h" x="432" y="442">Audio &amp; Peripherals (.sfx/.cbx/.bin)</text>
+                <text class="t-s" x="432" y="458">Event maps -> .msf/.xma/.ogg/.vag</text>
+                <text class="t-s" x="432" y="474">ToyPad NFC 180B .bin (TEA 16B keys)</text>
+
+                <!-- Arrows Tier 1 -> Tier 2 -->
+                <path class="ln-d" d="M 375 180 C 395 180, 395 61, 420 61" />
+                <path class="ln" d="M 375 205 L 420 161" />
+                <path class="ln" d="M 375 245 L 420 267" />
+                <path class="ln" d="M 375 280 C 395 280, 395 366, 420 366" />
+                <path class="ln" d="M 375 305 C 395 305, 395 452, 420 452" />
+
+                <!-- Tier 3: Leaf Formats -->
+                <rect class="bx-leaf" x="710" y="25" width="250" height="82" />
+                <text class="t-h" x="722" y="47">Animations &amp; Cutscenes</text>
+                <text class="t-s" x="722" y="65">.pak/.pac (0x1234567A) anim/text packs</text>
+                <text class="t-s" x="722" y="81">.an3 (ANI4/9) · .an4 (Deflate_v1.0) · .krw</text>
+                <text class="t-s" x="722" y="97">.anm / .bsa / .cbs / .cu2 / .cu3 (DINA)</text>
+
+                <rect class="bx-leaf" x="710" y="125" width="250" height="86" />
+                <text class="t-h" x="722" y="147">Scripts, GUI, Text &amp; Blueprints</text>
+                <text class="t-s" x="722" y="165">.scp / .sf (ScriptFu) / .lua / .txt</text>
+                <text class="t-s" x="722" y="181">.gip / .gix / .gil / .baml (Layout/MSBAML)</text>
+                <text class="t-s" x="722" y="197">.csv / .sub / .txc / .lxfml (XML Bricks)</text>
+
+                <rect class="bx-leaf" x="710" y="228" width="250" height="92" />
+                <text class="t-h" x="722" y="250">Textures, Atlases &amp; Shaders</text>
+                <text class="t-s" x="722" y="268">.dds / .tex (CellGcm / DXT) / .nxg_textures</text>
+                <text class="t-s" x="722" y="284">.ps3_shaders (HSCB) / .pc_shaders (DXBC)</text>
+                <text class="t-s" x="722" y="300">.ft2 (TNFN) / .fnt / .cft / .tsh (1TXD)</text>
+
+                <rect class="bx-leaf" x="710" y="338" width="250" height="72" />
+                <text class="t-h" x="722" y="360">Lighting, Foliage, Props &amp; AI</text>
+                <text class="t-s" x="722" y="378">.rtl (0x8C lights) · .par · .ptl · .for</text>
+                <text class="t-s" x="722" y="394">.ai2 (NuAI2) · .bur · .cns · .fmv (Bink)</text>
+
+                <rect class="bx-leaf" x="710" y="424" width="250" height="60" />
+                <text class="t-h" x="722" y="446">Streamed Audio &amp; VO</text>
+                <text class="t-s" x="722" y="464">.cbx (!B0X) · .msf (MSFC) · .xma · .ogg · .vag</text>
+
+                <!-- Tier 2 -> Tier 3 Arrows -->
+                <path class="ln-d" d="M 650 61 L 710 61" />
+                <path class="ln" d="M 650 150 L 710 165" />
+                <path class="ln" d="M 650 175 C 680 175, 675 370, 710 370" />
+                <path class="ln" d="M 650 267 L 710 274" />
+                <path class="ln" d="M 650 250 C 675 250, 675 80, 710 80" />
+                <path class="ln" d="M 650 366 L 710 378" />
+                <path class="ln" d="M 650 452 L 710 452" />
+            </svg>
+        </div>
+        <h2>Empirical Archive &amp; Extension Census</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>Empirically Inspected Builds &amp; Virtual Archive Censuses</caption>
+                <thead>
+                    <tr>
+                        <th>Title / Build</th>
+                        <th>Platform</th>
+                        <th>Engine Generation</th>
+                        <th>Container / TOC</th>
+                        <th>Compression</th>
+                        <th>Entries</th>
+                        <th>Hash Verify</th>
+                        <th>Key Observed Formats</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>LEGO Star Wars: The Video Game (2005)</strong><br><code>SLUS_210.83 v2.00 · GAME.DAT 615.5 MB + ZZZ_DVD.DAT 1.23 GB</code></td>
+                        <td>PlayStation 2 (ISO-9660 / EE ELF)</td>
+                        <td>Era 1 — Nu2 Classic (First GAME.DAT v-1 + RNC2)</td>
+                        <td>TOC v-1 (1 vol, 8B nodes)</td>
+                        <td>RNC\x02 (519) / Raw (3,704)</td>
+                        <td><code>4,223</code></td>
+                        <td>100% (4,223/4,223)</td>
+                        <td><code>.ani 871, .vag 796, .bsa 616, .txt 431, .scp 323, .gsc 164, .ghg 144, .rtl 113, .cut 106, .ter 106, .fpk (0x12345678)</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars: The Video Game (2005)</strong><br><code>GL5X4F (Maker 4F Eidos/TT) · RVZ\x01 (587 MB)</code></td>
+                        <td>Nintendo GameCube (Dolphin RVZ)</td>
+                        <td>Era 1 — Nu2 Classic</td>
+                        <td>Compressed RVZ GCM image</td>
+                        <td>RVZ disc container</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>N/A</td>
+                        <td><code>RVZ\x01 disc header verified</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars: The Video Game (2005)</strong><br><code>BLWE (Maker 4F, Title LEGOSTARWARS, 16.0 MB ROM)</code></td>
+                        <td>Game Boy Advance (ARM7TDMI ROM)</td>
+                        <td>Portable — Griptonite / Amaze 2D Isometric</td>
+                        <td>Flat memory-mapped ARM ROM</td>
+                        <td>LZ77 BIOS / custom</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>N/A</td>
+                        <td><code>.gba (16,777,216 B)</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars: The Video Game (2005)</strong><br><code>USA ISO (4,721 loose files, no .DAT)</code></td>
+                        <td>Original Xbox (XDVDFS)</td>
+                        <td>Era 1 — Nu2 Classic</td>
+                        <td>Loose XDVDFS filesystem</td>
+                        <td>None (uncompressed)</td>
+                        <td><code>4,721</code></td>
+                        <td>N/A</td>
+                        <td><code>.dds, .nux, .hgx, .ani, .bsa, .wavx 124, .cut, .ter, .rtl, .for, .cns, .txt</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars II: The Original Trilogy (2006)</strong><br><code>SLUS_214.09 v1.01 · GAME.DAT 1.74 GB + ZZZ_DVD.DAT 1.23 GB</code></td>
+                        <td>PlayStation 2 (ISO-9660 / EE ELF)</td>
+                        <td>Era 2 — Nu2 / NU20 Transition (TOC v-1)</td>
+                        <td>TOC v-1 (1 vol, 8B nodes)</td>
+                        <td>None (8,600 raw)</td>
+                        <td><code>8,600</code></td>
+                        <td>100% (8,600/8,600)</td>
+                        <td><code>.an3 2,440, .bsa 1,999, .vag 1,037, .txt 628, .scp 525, .gsc 448, .ghg 255, .fpk (0x1234567A), .xsb/.xwb</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars II: The Original Trilogy (2006)</strong><br><code>LEGOSW2 (AL7E, Maker 64, 32.0 MB NDS ROM)</code></td>
+                        <td>Nintendo DS (NitroFS ROM)</td>
+                        <td>Portable — Amaze Entertainment NitroFS</td>
+                        <td>NitroFS FNT/FAT (5 entries)</td>
+                        <td>Packed rom.bin + SoundData.rom</td>
+                        <td><code>5</code></td>
+                        <td>N/A</td>
+                        <td><code>rom.bin (19.2 MB), SoundData.rom (3.6 MB), GameBanner.nbfc/.nbfp</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars II: The Original Trilogy (2006)</strong><br><code>USA/Europe ISO (8,329 loose files)</code></td>
+                        <td>Original Xbox (XDVDFS)</td>
+                        <td>Era 2 — Nu2 / NU20 Transition</td>
+                        <td>Loose XDVDFS filesystem</td>
+                        <td>None</td>
+                        <td><code>8,329</code></td>
+                        <td>N/A</td>
+                        <td><code>.nx2, .hx2, .an3 (ANI4), .bsa, .anl, .wavm 149, .cu2, .fpk (0x1234567A), .htm</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars II: The Original Trilogy (2006)</strong><br><code>USA Rev 1 ISO (3,975 loose files)</code></td>
+                        <td>Xbox 360 (XDVDFS / XEX2)</td>
+                        <td>Era 2 — Nu2 HD (02UN)</td>
+                        <td>Loose XDVDFS filesystem</td>
+                        <td>None</td>
+                        <td><code>3,975</code></td>
+                        <td>N/A</td>
+                        <td><code>.gsc (02UN), .ghg (02UN), .ctr, .xma 149, .cc2, .tex, .txt</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars: The Complete Saga (2007)</strong><br><code>GAME.DAT 5.48 GB · EBOOT 5,766,536 B</code></td>
+                        <td>PS3 (BLUS30079, APP 01.00, SYS 01.93)</td>
+                        <td>Era 2 — Nu2 HD (MkDat V3.26)</td>
+                        <td>TOC v-2 (1 vol, 8B nodes)</td>
+                        <td>LZ2K (471) / Raw (13,388)</td>
+                        <td><code>13,859</code></td>
+                        <td>100%</td>
+                        <td><code>.ca3 2,915, .cbs 2,307, .msf 1,449, .txt 1,239, .scp 920, .gsc 844, .dds 520, .ghg 345, .rtl 305, .ctr 293, .tex 290</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars: The Complete Saga (2009 PC Steam)</strong><br><code>WinSteam GAME.DAT (ascending key anomaly)</code></td>
+                        <td>Windows PC (Steam)</td>
+                        <td>Era 2 — Nu2 HD (MkDat v4.0)</td>
+                        <td>TOC v-3 (1 vol, 8B nodes)</td>
+                        <td>LZ2K / Raw</td>
+                        <td><code>12,174</code></td>
+                        <td>Unresolved ascending IDs (0x3c27d..)</td>
+                        <td><code>.pak, .cfg, .wav, .gsc, .ghg, .an3, .dds, .txt</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Indiana Jones: The Original Adventures (2008)</strong><br><code>GAME.DAT 4.71 GB · EBOOT 6,362,296 B · 6 .PAM movies</code></td>
+                        <td>PS3 (BLES00254 / BLUS30141, APP 01.00, SYS 02.20)</td>
+                        <td>Era 2 — Nu2 HD (MkDat V3.26)</td>
+                        <td>TOC v-2 (1 vol, 8B nodes)</td>
+                        <td>LZ2K (360) / Raw (9,247)</td>
+                        <td><code>9,607</code></td>
+                        <td>100% (9,607/9,607)</td>
+                        <td><code>.an3 2,523, .cbs 2,038, .msf 1,292, .txt 692, .gsc 618, .scp 323, .dds 224, .tex 217, .ghg 207, .rtl 205, .ctr 203, .ufn 12, .gra 4, .csc 4</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Batman: The Videogame (2008)</strong><br><code>GAME.DAT 6.76 GB · EBOOT 6,576,992 B</code></td>
+                        <td>PS3 (BLES00332, APP 01.01, SYS 02.42)</td>
+                        <td>Era 2 — Nu2 HD (MkDat V3.26)</td>
+                        <td>TOC v-2 (1 vol, 8B nodes)</td>
+                        <td>LZ2K (353) / Raw (10,719)</td>
+                        <td><code>11,072</code></td>
+                        <td>100%</td>
+                        <td><code>.an3 2,577, .cbs 1,862, .msf 1,549, .txt 865, .vag 641, .gsc 620, .scp 560, .tex 338, .ghg 296</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Indiana Jones 2: The Adventure Continues (2009)</strong><br><code>GAME.DAT 6.92 GB · EBOOT 10,829,848 B</code></td>
+                        <td>PS3 (BLES00763, APP 01.00, SYS 03.01)</td>
+                        <td>Era 3a — Early NXG (MkDat v4.0)</td>
+                        <td>TOC v-3 (1 vol, 8B nodes)</td>
+                        <td>LZ2K (5,160) / Raw (5,791)</td>
+                        <td><code>10,951</code></td>
+                        <td>100%</td>
+                        <td><code>.pak 1,850, .txt 1,681, .msf 1,346, .gsc 1,088, .tex 968, .as 587, .cd 534, .scp 518, .led 513, .ghg 421, .dno 318</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Harry Potter: Years 1–4 (2010)</strong><br><code>7 vols (GAME + GAME1..6) · EBOOT 10,967,064 B</code></td>
+                        <td>PS3 (BLES00720 v03.00, SYS 03.60)</td>
+                        <td>Era 3a — Multi-Volume NXG (PakDat v1.01)</td>
+                        <td>TOC v-4 (7 vols, 8B nodes)</td>
+                        <td>LZ2K (4,310) / Raw (6,917)</td>
+                        <td><code>11,227</code></td>
+                        <td>100%</td>
+                        <td><code>.txt 2,327, .scp 1,868, .gsc 1,366, .led 1,004, .cd 632, .tex 539, .cu2 528, .as 502, .pac 486, .dno 353, .ghg 303</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Star Wars III: The Clone Wars (2011)</strong><br><code>5 vols (GAME + GAME0..3) · EBOOT 14,510,080 B</code></td>
+                        <td>PS3 (BLES00934 v02.00, SYS 03.60)</td>
+                        <td>Era 3b — Early Lua &amp; Serialised Dyno</td>
+                        <td>TOC v-4 (5 vols, 8B nodes)</td>
+                        <td>LZ2K (3,448) / Raw (4,762)</td>
+                        <td><code>8,210</code></td>
+                        <td>100%</td>
+                        <td><code>.msf 1,246, .txt 1,205, .tex 867, .gsc 829, .led 774, .scp 597, .cd 507, .as 359, .dno 337, .ghg 302, .lua 5</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Pirates of the Caribbean (2011 + 5 LIVE DLCs)</strong><br><code>6 vols (GAME + GAME0..4) · Default.xex 5,394,432 B · 42560802 STFS</code></td>
+                        <td>Xbox 360 (XDVDFS / XEX2 + LIVE STFS)</td>
+                        <td>Era 3b — Multi-Volume NXG (PakDat v1.01)</td>
+                        <td>TOC v-4 (6 vols, 8B nodes)</td>
+                        <td>LZ2K (3,669) / Raw (4,868)</td>
+                        <td><code>8,537</code></td>
+                        <td>100% (8,537/8,537)</td>
+                        <td><code>.txt 1,502, .xma 1,109, .gsc 1,076, .tex 935, .led 787, .scp 779, .cd 428, .dno 322, .as 308, LIVE STFS</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Pirates of the Caribbean (2011)</strong><br><code>6 vols (GAME + GAME0..4) · EBOOT 13,140,064 B</code></td>
+                        <td>PS3 (BLES01239, APP 01.00, SYS 03.60)</td>
+                        <td>Era 3b — OFNI v0x12 &amp; Lua UI</td>
+                        <td>TOC v-4 (6 vols, 8B nodes)</td>
+                        <td>LZ2K (3,666) / Raw (4,869)</td>
+                        <td><code>8,535</code></td>
+                        <td>100%</td>
+                        <td><code>.txt 1,502, .msf 1,108, .gsc 1,076, .tex 934, .led 787, .scp 779, .cd 428, .dno 322, .as 308, .pac 256, .lua 5</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Harry Potter: Years 1–4 (2010)</strong><br><code>USA/EU ISO (7.48 GB) · Default.xex (9,838,592 B, Title ID 0x575207E6) · GAME + GAME1..6.DAT</code></td>
+                        <td>Xbox 360 (XDVDFS / XEX2)</td>
+                        <td>Era 3a — Multi-Volume NXG (PakDat v1.01)</td>
+                        <td>TOC v-4 (7 vols, PakDat v1.01)</td>
+                        <td>LZ2K / Raw</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>Verified XEX2 + DAT vols</td>
+                        <td><code>.xma, .gsc, .ghg, .tex, .led, .scp, .cd, .dno, .as, .pac</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Harry Potter: Years 5–7 (2011)</strong><br><code>10 vols (GAME + GAME0..8) · EBOOT 13,621,064 B</code></td>
+                        <td>PS3 (BLES01348, APP 01.00, SYS 03.73)</td>
+                        <td>Era 3b — ScriptFu (.sf) Introduction</td>
+                        <td>TOC v-4 (10 vols, 8B nodes)</td>
+                        <td>LZ2K (6,876) / Raw (7,388)</td>
+                        <td><code>14,264</code></td>
+                        <td>100%</td>
+                        <td><code>.txt 2,422, .led 2,098, .sf 1,756, .tex 1,626, .gsc 1,494, .cd 890, .dno 633, .as 578, .pac 520, .cpd 217</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Harry Potter: Years 5–7 (2011)</strong><br><code>USA ISO (8.33 GB) · Default.xex (11,640,832 B, Title ID 0x57520812) · GAME + GAME0.DAT</code></td>
+                        <td>Xbox 360 (XDVDFS / XEX2)</td>
+                        <td>Era 3b — ScriptFu (.sf) Introduction</td>
+                        <td>TOC v-4 (2 large vols, PakDat v1.01)</td>
+                        <td>LZ2K / Raw</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>Verified XEX2 + DAT vols</td>
+                        <td><code>.xma, .sf, .led, .tex, .gsc, .cd, .dno, .as, .pac, .cpd</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Batman 2: DC Super Heroes (2012)</strong><br><code>4 vols (GAME + GAME0..2) · EBOOT 16,516,280 B</code></td>
+                        <td>PS3 (BLES01613, APP 01.00, SYS 04.11)</td>
+                        <td>Era 3c — First Open-World Hub &amp; HSEM</td>
+                        <td>TOC v-4 (4 vols, 8B nodes)</td>
+                        <td>LZ2K (6,175) / Raw (5,622)</td>
+                        <td><code>11,797</code></td>
+                        <td>100%</td>
+                        <td><code>.led 2,262, .txt 1,697, .tex 1,109, .gsc 1,075, .pak 799, .sf 738, .dno 646, .giz 454, .cu3 206, .aib 192, .cbx 38</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Batman 2: DC Super Heroes (2012 Steam)</strong><br><code>LEGOBatman2.exe (18,690,560 B) · GAME0..6.DAT + FILETABLE.TXT</code></td>
+                        <td>Windows PC (Steam PE32 x86)</td>
+                        <td>Era 3c — First Open-World Hub &amp; HSEM</td>
+                        <td>TOC v-4 (7 vols, PakDat v1.01)</td>
+                        <td>LZ2K / Raw</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>Verified TOC v-4</td>
+                        <td><code>.gsc (HSEM/DXBC), .ghg, .tex, .led, .sf, .cbx (!B0X), .cu3, .aib</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO The Lord of the Rings (2012)</strong><br><code>7 vols (GAME + GAME0..5) · EBOOT 19,023,640 B</code></td>
+                        <td>PS3 (BLUS30963, APP 01.00, SYS 04.25)</td>
+                        <td>Era 3c — Early TOC v-5 &amp; DFLT</td>
+                        <td>Early TOC v-5 (7 vols, 12B nodes, no .HDR)</td>
+                        <td>DFLT (9,767) / Raw (5,695)</td>
+                        <td><code>15,462</code></td>
+                        <td>100%</td>
+                        <td><code>.led 2,483, .ps3_shaders 1,846, .gsc 1,597, .pak 1,384, .tex 1,362, .txt 1,320, .dno 742, .sf 513, .cpj 10</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Marvel Super Heroes (2013)</strong><br><code>14 vols (GAME + GAME0..12) · EBOOT 24,187,056 B</code></td>
+                        <td>PS3 (BLUS31161, APP 01.00, SYS 04.46)</td>
+                        <td>Era 3c/4 Bridge — Early v-5 TOC + DXTV/CC4 Assets</td>
+                        <td>Early TOC v-5 (14 vols, 12B nodes, no .HDR)</td>
+                        <td>DFLT (16,499) / Raw (16,855)</td>
+                        <td><code>33,354</code></td>
+                        <td>100%</td>
+                        <td><code>.led 5,210, .cbx 4,717, .msf 3,841, .txt 2,828, .pak 2,495, .ps3_shaders 2,051, .nxg_textures 2,050, .an4 (in .pak)</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO The Hobbit (2014)</strong><br><code>5 .HDR/.DAT pairs + 15.36 GB PAD.DAT · EBOOT 26,444,040 B</code></td>
+                        <td>PS3 (BLES01998, APP 01.00, SYS 04.55)</td>
+                        <td>Era 4 — Late NXG (.HDR/.DAT + .CC4HSER/.res)</td>
+                        <td>Late TOC v-5 (5 vols, 12B nodes + .HDR)</td>
+                        <td>DFLT (17,776) / Raw (24,615)</td>
+                        <td><code>42,391</code></td>
+                        <td>100%</td>
+                        <td><code>.led 6,926, .msf 5,239, .an4 4,180, .res 4,078, .cbx 3,866, .tex 2,979, .ps3_shaders 2,267, .nxg_textures 2,267, .krw 77</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Batman 3: Beyond Gotham (2014)</strong><br><code>EU/US: 4 embedded vols + 15.05 GB PAD.DAT · JP: 3 .HDR/.DAT · EBOOT 28,535,960 B</code></td>
+                        <td>PS3 (BLES02033 / BLUS31434 / BLJM61243, APP 01.00, SYS 04.65)</td>
+                        <td>Era 4 — Late NXG (.CC4HSER v6 + ROTV MD5s)</td>
+                        <td>TOC v-6 (EU/US 4 embedded vols; JP 3 .HDR/.DAT, 12B nodes)</td>
+                        <td>DFLT (13,895) / Raw (38,262)</td>
+                        <td><code>52,157</code></td>
+                        <td>100% (52,155 + 2 col)</td>
+                        <td><code>.cbx 17,084, .an4 5,209, .res 4,566, .led 4,082, .msf 3,629, .txt 2,545, .tex 2,450, .nxg_textures 2,192, .ps3_shaders 2,190, .txc 310, .txm 41</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Dimensions (2015)</strong><br><code>7 .HDR/.DAT + 3 CMP2 (INSTALL0*.DAT) + 12.49 GB PAD.DAT · EBOOT 32,733,296 B</code></td>
+                        <td>PS3 (BLUS31473, APP 01.00, SYS 04.75)</td>
+                        <td>Era 4 — Late NXG Split Install (TOC v-7 + CMP2 + 56 NFC .bin)</td>
+                        <td>TOC v-7 (10 logical vols, 12B nodes)</td>
+                        <td>DFLT (28,351) / Raw (96,365) inside CMP2 LZMA</td>
+                        <td><code>124,716</code></td>
+                        <td>124,712 / 124,716</td>
+                        <td><code>.an4 28,552, .cbx 27,714, .res 15,119, .as 8,124, .led 6,764, .msf 6,096, .tex 6,036, .nxg_textures 4,833, .ps3_shaders 4,627, .lxfml 10, .baml 6</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Marvel&#x27;s Avengers (2016)</strong><br><code>6 .HDR/.DAT pairs + 14.64 GB PAD.DAT (no PAD in JP) · EBOOT 29,650,840 B</code></td>
+                        <td>PS3 (BLES02169 / BLUS31550 / BLJM61329, APP 01.00, SYS 04.76/04.78)</td>
+                        <td>Era 4/5 — .CC40TAD v-8 &amp; .CC4HSER v8 + ZIPX RC4</td>
+                        <td>.CC40TAD v-8 (6 vols, 10B BE nodes + ROTV MD5s)</td>
+                        <td>Raw (56,677) / DFLT (18,575) / ZIPX RC4 (5,980)</td>
+                        <td><code>81,232</code></td>
+                        <td>100% (81,232/81,232)</td>
+                        <td><code>.cbx 34,711, .an4 7,027, .led 6,270, .res 5,675, .txt 4,116, .msf 3,922, .tex 3,036, .nxg_textures 2,983, .ps3_shaders 2,766, .gsc 2,272, .grs 32</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Harry Potter Collection (2024 Double Eleven)</strong><br><code>harry1.exe (13.09 MB) / harry2.exe (14.43 MB)</code></td>
+                        <td>Windows PC (PE32+ AMD64)</td>
+                        <td>Remaster — Double Eleven .datwin / LZHAM</td>
+                        <td>.datwin TOC v-1 (0x12345678 sentinel) + .pkiwin/.pkdwin</td>
+                        <td>LZHAM (.datwin) / zlib (.pkdwin)</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>N/A</td>
+                        <td><code>.datwin, .pkiwin, .pkdwin, .gsc (HSEM/DXBC), .ghg</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Worlds (2017–2018 Base v01.00 + v01.12 + Classic Space DLC)</strong><br><code>CUSA02985 (3 fPKGs: 1.65 GB base, 1.68 GB v01.12, 1.57 MB DLC)</code></td>
+                        <td>PlayStation 4 (PS4 Orbis \x7fCNT PKG / PFS)</td>
+                        <td>Era 5 — NTT / Procedural Brick &amp; Voxel</td>
+                        <td>PS4 \x7fCNT + Outer PFS (20130315, encrypted mode 0xD)</td>
+                        <td>Encrypted AES-XTS PFS (unencrypted PlayGo/SFO/AT9/TRP metadata); Ref .CC40TAD</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>PKG metadata verified</td>
+                        <td><code>param.sfo, playgo-manifest.xml, snd0.at9 (ATRAC9), icon0/pic0/pic1.dds, trophy00.trp; inner .CC40TAD/.lxfml/.g1m/.chunk [Ref]</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>LEGO Worlds (2017 PC Reference Parsers)</strong><br><code>Reference parser specs complementing local PS4 CUSA02985 PKGs</code></td>
+                        <td>PC (Reference: TTGames-Explorer-Rebirth / TTModding-Docs)</td>
+                        <td>Era 5 — NTT / Procedural Brick &amp; Voxel</td>
+                        <td>.CC40TAD (TOC v-10 / v-11)</td>
+                        <td>DFLT / ZIPX (RC4)</td>
+                        <td><em>Loose / Ref</em></td>
+                        <td>Ref-only</td>
+                        <td><code>.lxfml, .g1m, .g1t, .chunk, .ghg (DX11)</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </body>
+
 </html>

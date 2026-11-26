@@ -1,32 +1,109 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.pc_shaders / .ps3_shaders / .fpo / .vpo / .blob (Compiled GPU Shaders)</title>
+    <title>.PS3_SHADERS / .PC_SHADERS (Compiled Shader Bundles)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.pc_shaders
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.ps3_shaders / .pc_shaders</nav>
+    <h1>.PS3_SHADERS &amp; .PC_SHADERS (Compiled Platform Shader Bundles)</h1>
+    <aside class="source-notice">
+        <p><strong>Dissected Directly:</strong> <em>LOTR</em> (1,846 PS3 + 66 PC), <em>Marvel 1</em> (2,051 PS3), <em>Hobbit</em> (2,267 PS3), and <em>Dimensions</em> (4,627 PS3).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">GPU Pipeline · Cg/RSX Bytecode (PS3) &amp; DXBC (PC)</p>
+        <p>Paired scene shader archives containing compiled vertex/fragment programs (HSCB on PS3, DXBC on PC) introduced alongside HSEM in Era 3c–4.</p>
+        <dl>
+            <dt>Extensions</dt>
+            <dd><code>.ps3_shaders</code>, <code>.pc_shaders</code></dd>
+            <dt>Signatures</dt>
+            <dd><code>.CC4HSERHSER</code> (v8) + <code>"ROTV"</code> + <code>"HSCB"</code> (PS3) / <code>"DXBC"</code> (PC)</dd>
+            <dt>Pairing</dt>
+            <dd>Exact path match with <code>.gsc</code> / <code>.ghg</code> / <code>.nxg_textures</code> (e.g. <code>*_nxg.ps3_shaders</code>)</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.pc_shaders / .ps3_shaders / .fpo / .vpo / .blob (Compiled GPU Shaders)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> 3D Graphics & Scene · <strong>Scope:</strong> Universal (Era 2 .vpo/.fpo on PS3; Era 3–4 .pc_shaders/.ps3_shaders; Remaster shaderblob_pc.blob)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>Precompiled platform GPU vertex and pixel/fragment shader libraries for Direct3D 9, Direct3D 11, Xbox 360 Xenos, and PS3 RSX.</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.pc_shaders</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>DXBC / DXIL / NV40 RSX / .CC4</code></dd>
-        <dt>Subsystem</dt><dd>3D Graphics & Scene</dd>
-        <dt>Cross-Game Scope</dt><dd>Universal (Era 2 .vpo/.fpo on PS3; Era 3–4 .pc_shaders/.ps3_shaders; Remaster shaderblob_pc.blob)</dd>
-    </dl>
-</section>
-<h2>Overview</h2>
-<ul>
-    <li><strong>PS3:</strong> Uses <code>.ps3_shaders</code> (<code>1,354</code> files in <em>Dimensions</em>) and NVIDIA Cg RSX <code>.vpo</code> / <code>.fpo</code> programs.</li>
-    <li><strong>Windows PC (32-bit DX9/DX11):</strong> Uses <code>.pc_shaders</code> (<code>681</code> files in <em>Batman 2</em>).</li>
-    <li><strong>2024 PC Remaster:</strong> Consolidates all D3D11 shaders into <code>shaderblob_pc.blob</code> (13.86 MB).</li>
-</ul>
+    <section id="overview" class="doc-overview">
+        <h2>Binary Envelope (Observed in <code>vfx_homersimpson_nxg.ps3_shaders</code>)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.ps3_shaders Layout</caption>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Type / Magic</th>
+                        <th>Field</th>
+                        <th>Observed Content</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0x00</code></td>
+                        <td><code>u32be</code></td>
+                        <td><code>outer_sz</code></td>
+                        <td>Outer HSER metadata block size (<code>0x98</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x04..0x20</code></td>
+                        <td><code>.CC4HSERHSER</code> + <code>ver=8</code> + <code>ROTV</code></td>
+                        <td>Header</td>
+                        <td>Standard CC4 versioned header.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x34</code></td>
+                        <td><code>ASCII</code></td>
+                        <td><code>source_nus</code></td>
+                        <td>Intermediate Maya/NuScene build path (e.g. <code>Z:\LEGO_Zeus\...\VFX_HomerSimpson.nus</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x9B+</code></td>
+                        <td><code>.CC4HSERHSER (v2)</code> &rarr; <code>"HSCB"</code></td>
+                        <td>Shader Program Table</td>
+                        <td>Series of compiled CellOS RSX/Cg vertex and fragment shader binaries tagged <code>"HSCB"</code>.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/gsc.html"><code>.gsc / .ghg / .res</code></a> — Bound dynamically during LTMU/TDML material shader lookup.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Shared Format IDs:</strong> Inner <code>"HSCB"</code> microcode is proprietary Sony RSX/NV40 vertex+fragment ISA; PC builds store standard Microsoft <code>"DXBC"</code> bytecode chunks inside the same <code>.CC4HSER</code> wrapper.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ExtractShaderBlobs(buf):
+    pos = 0; blobs = []
+    while (p := FindTag(buf, b&quot;HSCB&quot; or b&quot;DXBC&quot;, pos)) &gt;= 0:
+        blobs.append(p)
+        pos = p + 4
+    return blobs</code></pre>
+    </section>
+
 </body>
+
 </html>

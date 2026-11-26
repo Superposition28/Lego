@@ -1,28 +1,107 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.bsa / .anl (Blend Shape / Lip-Sync & Animation List)</title>
+    <title>.BSA (Binary State Animation Descriptors)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.bsa
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.bsa (Binary State Anims)</nav>
+    <h1>.BSA (Era 1–2 Binary State Animation Descriptors)</h1>
+    <aside class="source-notice">
+        <p><strong>Inspected Directly:</strong> <em>LSW1</em> Xbox (<code>GunOut.bsa</code>, <code>run_TwoArms.bsa</code>, 99 B) and <em>LSW2</em> Xbox (<code>fallLand.bsa</code>, 456 B).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Character State Machine · LSW1 &amp; LSW2 Xbox</p>
+        <p>Compact binary state-transition and frame-event files paired directly with .ani/.an3 character clips in LEGO Star Wars I &amp; II prior to text/EdFile .as graphs.</p>
+        <dl>
+            <dt>Extension</dt>
+            <dd><code>.bsa</code></dd>
+            <dt>Header Magic</dt>
+            <dd><code>u32le 0x00000002</code> (version 2) + Nu offset fixup headers</dd>
+            <dt>Replaced By</dt>
+            <dd>Plaintext <code>.txt</code> / reflected <code>EdFile .as</code> in Era 3+</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.bsa / .anl (Blend Shape / Lip-Sync & Animation List)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> Animation · <strong>Scope:</strong> Era 1–2 Specific (LSW1 & LSW2: 679 .bsa in LSW1, 1,999 .bsa + 184 .anl in LSW2)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>Early Nu2 morph-target / blend-shape animation (.bsa) paired 1-to-1 with skeletal clips (.ani/.an3) and animation list manifests (.anl).</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.bsa</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>Binary Keyframe / ANL</code></dd>
-        <dt>Subsystem</dt><dd>Animation</dd>
-        <dt>Cross-Game Scope</dt><dd>Era 1–2 Specific (LSW1 & LSW2: 679 .bsa in LSW1, 1,999 .bsa + 184 .anl in LSW2)</dd>
-    </dl>
-</section>
-<h2>Overview</h2>
-<p>In <em>LEGO Star Wars: The Video Game</em> (2005) and <em>LEGO Star Wars II</em> (2006), almost every character <code>.ani</code> or <code>.an3</code> file is accompanied by a small <code>.bsa</code> file (typically 50–400 bytes, e.g. <code>chars\amidala\explode.bsa</code> = 82 B, byte-identical between PS2 and Xbox). <em>LSW2</em> also introduces <code>.anl</code> (Animation List, 184 files) grouping character animation sets prior to the adoption of <code>StreamInfo</code> <code>.as</code> files in Era 3.</p>
+    <section id="overview" class="doc-overview">
+        <h2>Binary Header (Observed in <code>run_TwoArms.bsa</code> &amp; <code>fallLand.bsa</code>)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.bsa Nu Header Structure</caption>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Size</th>
+                        <th>Type</th>
+                        <th>Field</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0x00</code></td>
+                        <td>4</td>
+                        <td><code>u32le</code></td>
+                        <td><code>version</code></td>
+                        <td>Constant <code>2</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x04..0x0F</code></td>
+                        <td>12</td>
+                        <td><code>u16le[]</code></td>
+                        <td><code>rel_ptrs</code></td>
+                        <td>Relative Nu descriptor pointers (identical convention to <code>.ani</code>/<code>.cut</code>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x10..0x1F</code></td>
+                        <td>16</td>
+                        <td><code>f32le, u16le[]</code></td>
+                        <td><code>blend_params</code></td>
+                        <td>Transition duration float (e.g. <code>28.0f</code> / <code>45.0f</code>) and state/blend flags.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/xex/index.html"><code>Character Directory Loaders</code></a> — Mounted per character folder alongside .ani/.an3.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/an3.html"><code>.ani / .an3</code></a> — References character skeletal clips.</li>
+            </ul>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li>Absent from PS3 Era 2+ builds (replaced by <code>.cbs</code>/<code>.as</code>).</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseBsaHeader(buf):
+    ver = ReadU32LE(buf, 0)
+    blend = ReadF32LE(buf, 0x10)
+    return {version: ver, blend_param: blend, size: len(buf)}</code></pre>
+    </section>
+
 </body>
+
 </html>

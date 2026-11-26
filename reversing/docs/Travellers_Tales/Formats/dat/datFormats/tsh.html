@@ -1,32 +1,100 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>.tsh (NuTextureSheet / Texture Share Atlas Lookup Table)</title>
+    <title>.TSH (UI Sprite &amp; Button Atlas Sheets)</title>
     <link rel="stylesheet" href="../../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>Formats</a><span>/</span><a href='../../../index.html#Formats-dat' target='_parent'>.dat</a><span>/</span>.tsh
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.tsh (Texture Sheets)</nav>
+    <h1>.TSH (UI Texture Atlas Sheets — 1TXD)</h1>
+    <aside class="source-notice">
+        <p><strong>Dissected Directly:</strong> <em>Dimensions</em> PS3 (<code>buttonicons_nxg.tsh</code>, 75,413 B) and <em>Hobbit</em> PS3 (8 files).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">UI Graphics · Hobbit &amp; LEGO Dimensions</p>
+        <p>Sprite and button-prompt texture atlas container wrapping normalized UV crop rectangles alongside a DDS/DXT bitmap atlas under .CC4HSER / .CC4HSXT / 1TXD.</p>
+        <dl>
+            <dt>Extension</dt>
+            <dd><code>.tsh</code></dd>
+            <dt>Container Stack</dt>
+            <dd><code>.CC4HSERHSER</code> (v6) &rarr; <code>.CC4HSXTHSXT</code> (v4) &rarr; <code>"1TXD"</code></dd>
+            <dt>Occurrences</dt>
+            <dd>8 (<em>Hobbit</em>), 7 (<em>Dimensions</em>)</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
     </nav>
-    <h1>.tsh (NuTextureSheet / Texture Share Atlas Lookup Table)</h1>
-<aside class="source-notice"><p><strong>Category:</strong> Textures & Materials · <strong>Scope:</strong> Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions)</p></aside>
-<section class="format-summary">
-    <p class="eyebrow">Format Specification · TT Games Engine</p>
-    <p>NuTextureSheet and texture sharing container (4CC.TXSH / TSHR / RHST) mapping FNV1UPPER hashes and UV sub-rectangles to shared minifigure decals and texture atlases.</p>
-    <dl>
-        <dt>File Extension</dt><dd><code>.tsh</code></dd>
-        <dt>Header Signature / Magic</dt><dd><code>4CC.TXSH / 02UN / NU20 (TSHR / RHST)</code></dd>
-        <dt>Subsystem</dt><dd>Textures & Materials</dd>
-        <dt>Cross-Game Scope</dt><dd>Era 3–4 (HP 1–4, HP 5–7, Batman 2, Dimensions)</dd>
-    </dl>
-</section>
-<h2>Overview &amp; Structure (<code>NuTextureSheet</code> / <code>TSH.cs</code>)</h2>
-<p><code>.tsh</code> files appear in two closely related forms across Era 3–4:</p>
-<ul>
-    <li><strong><code>NU20</code> / <code>02UN</code> <code>TSHR</code> (LE) / <code>RHST</code> (BE):</strong> Aliases shared textures across character packages.</li>
-    <li><strong><code>4CC.TXSH</code> (<code>NuTextureSheet</code>):</strong> Contains a <code>NU20</code> header followed by an array of texture sheet entries mapping <code>FNV1UPPER</code> (offset basis <code>0x811C9DC5</code>, prime <code>0x199933</code>) hashes or relative <code>.tex</code> paths to UV sprite sub-rectangles for UI icons and minifigure decals.</li>
-</ul>
+    <section id="overview" class="doc-overview">
+        <h2>Chunk Layout (Observed in <code>buttonicons_nxg.tsh</code>)</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.tsh Inner Structure</caption>
+                <thead>
+                    <tr>
+                        <th>Offset</th>
+                        <th>Type / Magic</th>
+                        <th>Field / Content</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>0x00..0x0F</code></td>
+                        <td><code>u32be sz, .CC4HSERHSER</code></td>
+                        <td>Outer HSER v6 envelope + <code>ROTV</code> + build tag (<code>Trunk_QA</code>, user string).</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x4B..0x5F</code></td>
+                        <td><code>.CC4HSXTHSXT</code> + <code>u32be 4</code></td>
+                        <td>Texture sheet descriptor header + <code>ROTV</code>.</td>
+                    </tr>
+                    <tr>
+                        <td><code>0x64..0x9F</code></td>
+                        <td><code>f32be[4]</code> + dims</td>
+                        <td>Normalized UV rectangle bounds (e.g. <code>0.406..0.57</code>), stride flags, <code>"1TXD"</code> magic tag per atlas/sub-rect.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/baml.html"><code>.gip / .gix / .baml UI</code></a> — UI layouts look up named icon regions within button/HUD sheets.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/tex.html"><code>.tex / DDS</code></a> — Embedded 1TXD DXT texture payload.</li>
+            </ul>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Pre-Hobbit Absence:</strong> Earlier titles store button prompts inside <code>buttons_*.ft2</code>/<code>.qfn</code>/<code>.ufn</code> instead of <code>.tsh</code>.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseTsh(buf):
+    if buf[4:12] != b&quot;.CC4HSER&quot;: raise InvalidTsh
+    hsxt = FindTag(buf, b&quot;.CC4HSXT&quot;)
+    txd_tags = FindAll(buf[hsxt:], b&quot;1TXD&quot;)
+    return {hsxt_off: hsxt, sub_images: len(txd_tags)}</code></pre>
+    </section>
+
 </body>
+
 </html>

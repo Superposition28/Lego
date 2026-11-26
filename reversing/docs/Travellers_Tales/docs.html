@@ -1,41 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Traveller's Tales (TT Games) Shared Architecture - Documentation Guide</title>
     <link rel="stylesheet" href="style/main.css">
 </head>
+
 <body class="doc-page">
     <nav class="breadcrumbs" aria-label="Breadcrumb">
         <a href='index.html#home' target='_parent'>Documentation</a><span>/</span>Guide
     </nav>
     <h1>Documentation Guide &amp; Format Analysis Conventions</h1>
-<aside class="source-notice"><p><strong>Project:</strong> Traveller's Tales (TT Games) Shared Architecture Reversing &amp; Format Documentation</p></aside>
-<section class="doc-overview">
-    <h2>1. Project Mission &amp; Two-Tier Hierarchy</h2>
-    <p>This repository documents binary file formats, proprietary archive packaging, compression algorithms, 3D geometry pipelines, and filesystem structures across <strong>Traveller's Tales (TT Games / TT Fusion)</strong> LEGO titles within the RemakeEngine ecosystem. Documentation is divided into two complementary tiers with strict scoping rules:</p>
-    <ul>
-        <li><strong>Global Parent LEGO Documentation (<code>EngineApps/Games/Lego/reversing/docs/Travellers_Tales/</code> — this suite):</strong> Acts as the unified, cross-generation master specification. It combines all format versions across engine eras (<code>Nu2</code>, <code>NXG</code>, <code>DX11</code>, <code>NTT</code>, and <code>Double Eleven</code> remasters), maps platform differences (PS2, Original Xbox, GameCube, PS3, Xbox 360, PC), records multi-title file censuses, and documents how a multi-era parser detects and dispatches every known variant.</li>
-        <li><strong>Individual Game Documentation (<code>EngineApps/Games/Lego/Games/&lt;Game&gt;/reversing/docs/</code>):</strong> Scoped strictly to the specific format versions, container variants, and directory layouts present in <strong>that game</strong>. Individual game format pages must include minimal or no coverage of past or future variants from other titles — instead linking or referring back to this parent LEGO documentation for cross-era history — while still being completely self-contained so an implementer can build a working parser for <em>that game's</em> files alone.</li>
-    </ul>
+    <aside class="source-notice">
+        <p><strong>Project:</strong> Traveller's Tales (TT Games) Shared Architecture Reversing &amp; Format Documentation</p>
+    </aside>
+    <section class="doc-overview">
+        <h2>1. Project Mission &amp; Two-Tier Hierarchy</h2>
+        <p>This repository documents binary file formats, proprietary archive packaging, compression algorithms, 3D geometry pipelines, and filesystem structures across <strong>Traveller's Tales (TT Games / TT Fusion)</strong> LEGO titles within the RemakeEngine ecosystem. Documentation is divided into two complementary tiers with strict scoping rules:</p>
+        <ul>
+            <li><strong>Global Parent LEGO Documentation (<code>EngineApps/Games/Lego/reversing/docs/Travellers_Tales/</code> — this suite):</strong> Acts as the unified, cross-generation master specification. It combines all format versions across engine eras (<code>Nu2</code>, <code>NXG</code>, <code>DX11</code>, <code>NTT</code>, and <code>Double Eleven</code> remasters), maps platform differences (PS2, Original Xbox, GameCube, PS3, Xbox 360, PC), records multi-title file censuses, and documents how a multi-era parser detects and dispatches every known variant.</li>
+            <li><strong>Individual Game Documentation (<code>EngineApps/Games/Lego/Games/&lt;Game&gt;/reversing/docs/</code>):</strong> Scoped strictly to the specific format versions, container variants, and directory layouts present in <strong>that game</strong>. Individual game format pages must include minimal or no coverage of past or future variants from other titles — instead linking or referring back to this parent LEGO documentation for cross-era history — while still being completely self-contained so an implementer can build a working parser for <em>that game's</em> files alone.</li>
+        </ul>
 
-    <h2>2. Two Complementary Trees Within Each Documentation Suite</h2>
-    <ol>
-        <li><strong>Format Analysis (<code>Formats/</code>):</strong> Follows binary format origins: root executable and container formats (<code>.xex</code>/<code>.xbe</code>, <code>.bin</code>/<code>ELF</code>, <code>.exe</code>, <code>.dat</code>/<code>.hdr</code>/<code>.datwin</code>) followed by formats extracted from within archives (<code>datFormats/</code>).</li>
-        <li><strong>Game Files &amp; Asset Use (<code>Files/</code>):</strong> Documents directory hierarchies, format censuses, sound banks, character definitions, mission scripts, and in-game usage through a <em>combined virtual filesystem</em>.</li>
-    </ol>
+        <h2>2. Two Complementary Trees Within Each Documentation Suite</h2>
+        <ol>
+            <li><strong>Format Analysis (<code>Formats/</code>):</strong> Follows binary format origins: root executable and container formats (<code>.xex</code>/<code>.xbe</code>, <code>.bin</code>/<code>ELF</code>, <code>.exe</code>, <code>.dat</code>/<code>.hdr</code>/<code>.datwin</code>) followed by formats extracted from within archives (<code>datFormats/</code>).</li>
+            <li><strong>Game Files &amp; Asset Use (<code>Files/</code>):</strong> Documents directory hierarchies, format censuses, sound banks, character definitions, mission scripts, and in-game usage through a <em>combined virtual filesystem</em>.</li>
+        </ol>
 
-    <h2>3. Expected Level of Detail (Standalone Clean-Room Specification Standard)</h2>
-    <p>Whenever a format is understood (in either the parent shared documentation or an individual game module), its specification page must serve as a <strong>complete, self-contained engineering reference</strong>. An independent developer must be able to read the documentation alone and implement a working parser or converter without inspecting or depending on RemakeEngine's own parser implementations.</p>
-    <p>Every fully understood format page must include:</p>
-    <ul>
-        <li><strong>Scope, Magic Signatures &amp; Endianness Rules:</strong> Exact 4CC/magic bytes, version ranges, and byte-order conventions (including mixed-endian structures such as big-endian <code>HSEM</code> chunk tables paired with little-endian PC float32 vertex coordinates).</li>
-        <li><strong>Complete Binary Layout Tables:</strong> Byte-offset tables (<code>Offset</code>, <code>Size</code>, <code>Type</code>, <code>Field</code>, <code>Description</code>) covering container headers, nested chunks, descriptor arrays, vertex/index streams, and trailing structures.</li>
-        <li><strong>Attribute Encodings &amp; Mathematical Formulas:</strong> Exact type tables, bitmask meanings, half-float / unsigned-byte normalization equations (e.g., <code>UByteN4</code> via <code>(b / 127.5) - 1.0</code>), coordinate transforms (e.g., <code>WorldBind[b] = m2[b]^-1</code>), and triangle topology/winding rules (triangle list vs. alternating-parity strip, CCW vs. CW front-face conversion).</li>
-        <li><strong>Filtering, Back-References &amp; Edge Cases:</strong> Explicit handling of shared buffer IDs (e.g., <code>0xC000xxxx</code>), pass flags (e.g., <code>unk1 != 0</code> shadow/depth prepasses), LOD selection (<code>LOGH</code> / <code>NuLayer</code>), and empty locator files.</li>
-        <li><strong>End-to-End Pseudocode:</strong> Clear, self-contained pseudocode showing the complete parsing and reconstruction flow from raw file bytes to decoded output.</li>
-    </ul>
-</section>
+        <h2>3. Expected Level of Detail (Standalone Clean-Room Specification Standard)</h2>
+        <p>Whenever a format is understood (in either the parent shared documentation or an individual game module), its specification page must serve as a <strong>complete, self-contained engineering reference</strong>. An independent developer must be able to read the documentation alone and implement a working parser or converter without inspecting or depending on RemakeEngine's own parser implementations.</p>
+        <p>Every fully understood format page must include:</p>
+        <ul>
+            <li><strong>Scope, Magic Signatures &amp; Endianness Rules:</strong> Exact 4CC/magic bytes, version ranges, and byte-order conventions (including mixed-endian structures such as big-endian <code>HSEM</code> chunk tables paired with little-endian PC float32 vertex coordinates).</li>
+            <li><strong>Complete Binary Layout Tables:</strong> Byte-offset tables (<code>Offset</code>, <code>Size</code>, <code>Type</code>, <code>Field</code>, <code>Description</code>) covering container headers, nested chunks, descriptor arrays, vertex/index streams, and trailing structures.</li>
+            <li><strong>Attribute Encodings &amp; Mathematical Formulas:</strong> Exact type tables, bitmask meanings, half-float / unsigned-byte normalization equations (e.g., <code>UByteN4</code> via <code>(b / 127.5) - 1.0</code>), coordinate transforms (e.g., <code>WorldBind[b] = m2[b]^-1</code>), and triangle topology/winding rules (triangle list vs. alternating-parity strip, CCW vs. CW front-face conversion).</li>
+            <li><strong>Filtering, Back-References &amp; Edge Cases:</strong> Explicit handling of shared buffer IDs (e.g., <code>0xC000xxxx</code>), pass flags (e.g., <code>unk1 != 0</code> shadow/depth prepasses), LOD selection (<code>LOGH</code> / <code>NuLayer</code>), and empty locator files.</li>
+            <li><strong>End-to-End Pseudocode:</strong> Clear, self-contained pseudocode showing the complete parsing and reconstruction flow from raw file bytes to decoded output.</li>
+        </ul>
+    </section>
 </body>
+
 </html>

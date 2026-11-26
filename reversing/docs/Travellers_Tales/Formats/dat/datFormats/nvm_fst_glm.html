@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>.NVM / .FST / .GLM (Hub Navmesh, Footsteps &amp; Traffic)</title>
+    <link rel="stylesheet" href="../../../style/main.css">
+</head>
+
+<body class="doc-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.nvm / .fst / .glm (Open-World AI)</nav>
+    <h1>.NVM, .FST &amp; .GLM (Era 4 Open-World Navmesh, Footsteps &amp; Gridlock Traffic)</h1>
+    <aside class="source-notice">
+        <p><strong>Dissected Directly:</strong> <em>Marvel 1</em> (<code>defaultnetwork.nvm</code> 61,256 B, <code>pathways.fst</code> 73,072 B, <code>roadtraffic.glm</code> 266,888 B), <em>Hobbit</em> (2 <code>.nvm</code>), <em>Dimensions</em> (11 <code>.fst</code>, 1 <code>.glm</code>).</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">Open-World Simulation · Marvel 1, Hobbit &amp; Dimensions</p>
+        <p>Trio of big-endian .CC4 spatial simulation containers introduced in LEGO Marvel Super Heroes for Manhattan/Hub AI: VNTT navigation mesh (.nvm), SFTT pedestrian pathways (.fst), and LGTT road traffic (.glm).</p>
+        <dl>
+            <dt>Extensions &amp; Tags</dt>
+            <dd><code>.nvm</code> (<code>.CC4VNTT</code> v2), <code>.fst</code> (<code>.CC4SFTT</code> v4), <code>.glm</code> (<code>.CC4LGTT</code> v5/v6)</dd>
+            <dt>Note on 4CC Naming</dt>
+            <dd>Tags are 4-char reversed big-endian IDs: <code>VNTT</code> = TTNV, <code>SFTT</code> = TTFS, <code>LGTT</code> = TTGL (GridLock).</dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
+    </nav>
+    <section id="overview" class="doc-overview">
+        <h2>Container Signatures &amp; Binary Roles</h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>CC4 Spatial Simulation Trio (Marvel 1 – Dimensions)</caption>
+                <thead>
+                    <tr>
+                        <th>Ext</th>
+                        <th>Offset 0x00</th>
+                        <th>4CC Magic</th>
+                        <th>Version</th>
+                        <th>Subsystem &amp; Observed Sizes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>.nvm</code></td>
+                        <td><code>u32be payload_sz</code></td>
+                        <td><code>.CC4VNTT</code></td>
+                        <td><code>2</code></td>
+                        <td>Open-world hub NavMesh graph (<code>defaultnetwork.nvm</code> 61.2 KB in <em>Marvel 1</em>; 2 hubs in <em>Hobbit</em>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>.fst</code></td>
+                        <td><code>u32be payload_sz</code></td>
+                        <td><code>.CC4SFTT</code></td>
+                        <td><code>4</code></td>
+                        <td>Crowd / Footstep pedestrian lanes (<code>pathways.fst</code> 73.0 KB in <em>Marvel 1</em>; 11 hubs in <em>Dimensions</em>).</td>
+                    </tr>
+                    <tr>
+                        <td><code>.glm</code></td>
+                        <td><code>u32be payload_sz</code></td>
+                        <td><code>.CC4LGTT</code></td>
+                        <td><code>5</code> / <code>6</code></td>
+                        <td>GridLock vehicle road splines &amp; intersection graph (<code>roadtraffic.glm</code> 266.8 KB in <em>Marvel 1</em>; 1 in <em>Dimensions</em>).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/led.html"><code>.led / .sf</code></a> — Open-world hub managers mount levels/<hub>/(navi|footsteps|gridlock)/maps/*.{nvm,fst,glm}.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <p><em>None documented (leaf or standalone file).</em></p>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Packed Float Arrays:</strong> Inside the headers lie dense BE <code>Float32</code> coordinate vertices and uint16/uint32 adjacency indices; individual hub lane flag bits remain only partially mapped.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function IdentifyCc4SimContainer(buf):
+    sz = ReadU32BE(buf, 0)
+    tag = buf[4:12].decode(&quot;ascii&quot;, &quot;replace&quot;)
+    ver = ReadU32BE(buf, 12)
+    return {tag: tag, version: ver, size: sz}</code></pre>
+    </section>
+
+</body>
+
+</html>

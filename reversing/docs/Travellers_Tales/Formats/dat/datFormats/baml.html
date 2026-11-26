@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>.BAML (Binary UI Markup — TT LayoutRoot &amp; Microsoft MSBAML)</title>
+    <link rel="stylesheet" href="../../../style/main.css">
+</head>
+
+<body class="doc-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../../index.html#Formats-dat" target="_parent">Formats</a><span>/</span><a href="../../../Formats/dat/dat.html">.dat Archive</a><span>/</span>.baml (LayoutRoot &amp; WPF MSBAML)</nav>
+    <h1>.BAML (Era 4 Binary UI Markup — Hobbit LayoutRoot &amp; Dimensions MSBAML)</h1>
+    <aside class="source-notice">
+        <p><strong>Dissected Directly:</strong> <em>Dimensions</em> <code>icons\hud\buttonprompts\obj\debug\mainwindow.baml</code> (3,875 B) starts with <code>u32le 12</code> + UTF-16LE <code>"MSBAML"</code> + CLR assembly <code>"ButtonPrompts, Version=1.0.0.0"</code>!</p>
+    </aside>
+    <section class="format-summary">
+        <p class="eyebrow">User Interface · The Hobbit (4 files) &amp; LEGO Dimensions (6 files)</p>
+        <p>Despite sharing the .baml extension, The Hobbit uses a custom TT binary tree (LayoutRoot) while LEGO Dimensions uses genuine Microsoft WPF Compiled BAML ("MSBAML" UTF-16LE + FusionBlend).</p>
+        <dl>
+            <dt>Extension</dt>
+            <dd><code>.baml</code></dd>
+            <dt>Two Distinct Formats</dt>
+            <dd><em>Hobbit</em> (4 files): TT <code>LayoutRoot</code> binary &middot; <em>Dimensions</em> (6 files): Microsoft WPF <code>MSBAML</code></dd>
+        </dl>
+    </section>
+
+    <nav class="page-toc" aria-label="On this page">
+        <ul>
+            <li><a href="#overview">1. Overview &amp; Layout</a></li>
+            <li><a href="#relationships">2. Cross-Format Relationships</a></li>
+            <li><a href="#edge-cases">3. Edge Cases &amp; Unresolved Fields</a></li>
+            <li><a href="#pseudocode">4. Standalone Parser Pseudocode</a></li>
+        </ul>
+    </nav>
+    <section id="overview" class="doc-overview">
+        <h2>Two Distinct Formats Under <code>.baml</code></h2>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>.baml Implementation Split</caption>
+                <thead>
+                    <tr>
+                        <th>Game</th>
+                        <th>Magic / Signature</th>
+                        <th>Format &amp; Origin</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><em>LEGO The Hobbit</em> (4 files)</td>
+                        <td>TT binary header containing <code>"LayoutRoot"</code></td>
+                        <td>Custom TT Games serialized UI node graph.</td>
+                    </tr>
+                    <tr>
+                        <td><em>LEGO Dimensions</em> (6 files)</td>
+                        <td><code>+0x00 u32le 0x0C</code> + UTF-16LE <code>"MSBAML"</code> + version <code>0x60</code></td>
+                        <td>Genuine Microsoft .NET WPF Binary Application Markup Language compiled from FusionBlend Visual Studio projects!</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section id="relationships" class="section">
+        <h2>Cross-Format Relationships &amp; Dependencies</h2>
+        <div class="relationship-flow">
+            <h3>Referenced By (Upstream Containers / Loaders)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/tsh.html"><code>UI Toolkit / HUD</code></a> — ButtonPrompt UI definitions paired with .tsh sprite sheets.</li>
+            </ul>
+            <h3>References (Downstream Assets / Sub-Formats)</h3>
+            <ul>
+                <li><a href="../../../Formats/dat/datFormats/tsh.html"><code>.tsh / .png</code></a> — References button icon atlases.</li>
+            </ul>
+        </div>
+    </section>
+    <section id="edge-cases" class="section">
+        <h2>Filtering, Edge Cases &amp; Unresolved Fields</h2>
+        <ul>
+            <li><strong>Same Extension, Completely Different Codecs:</strong> Dispatch on bytes <code>4..16 == b"M\0S\0B\0A\0M\0L\0"</code> before choosing a WPF BAML decoder vs TT <code>LayoutRoot</code>.</li>
+        </ul>
+    </section>
+    <section id="pseudocode" class="section">
+        <h2>Standalone Clean-Room Parser Pseudocode</h2>
+        <pre><code>function ParseBamlHeader(buf):
+    if buf[4:16] == b&quot;M\0S\0B\0A\0M\0L\0&quot;: return {kind: &quot;Microsoft_WPF_MSBAML&quot;}
+    return {kind: &quot;TT_LayoutRoot&quot;, has_root: b&quot;LayoutRoot&quot; in buf}</code></pre>
+    </section>
+
+</body>
+
+</html>

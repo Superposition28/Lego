@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>PlayStation 4 Inspected Packages (LEGO Worlds CUSA02985)</title>
+    <link rel="stylesheet" href="../../style/main.css">
+</head>
+
+<body class="doc-page">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../Files/index.html">Files</a><span>/</span>PlayStation 4 (Orbis)</nav>
+    <h1>PlayStation 4 (Orbis) Filesystem &amp; Binary Notes</h1>
+    <aside class="source-notice">
+        <p><strong>Inspected Directly (Unencrypted Metadata):</strong> <em>LEGO Worlds</em> <code>CUSA02985</code> Base <code>v01.00</code>, Update <code>v01.12</code>, and Classic Space DLC <code>\x7fCNT</code> fPKGs.</p>
+    </aside>
+    <section class="doc-overview">
+        <p>PlayStation 4 packages use big-endian <code>\x7fCNT</code> containers wrapping unencrypted PlayGo/SFO/ATRAC9/DDS/Trophy metadata alongside an AES-XTS encrypted outer/inner PFS filesystem (<code>magic=20130315</code>, <code>mode=0x000D</code>, <code>block_size=0x10000</code>).</p>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>PlayStation 4 (Orbis) Inspected Source Images &amp; Archives</caption>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Build / IDs</th>
+                        <th>Container &amp; TOC</th>
+                        <th>Observed Formats / Counts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LEGO Worlds (2017–2018 Base v01.00 + v01.12 + Classic Space DLC)</td>
+                        <td>CUSA02985 (3 fPKGs: 1.65 GB base, 1.68 GB v01.12, 1.57 MB DLC)</td>
+                        <td>PS4 \x7fCNT + Outer PFS (20130315, encrypted mode 0xD) · Encrypted AES-XTS PFS (unencrypted PlayGo/SFO/AT9/TRP metadata); Ref .CC40TAD</td>
+                        <td>param.sfo, playgo-manifest.xml, snd0.at9 (ATRAC9), icon0/pic0/pic1.dds, trophy00.trp; inner .CC40TAD/.lxfml/.g1m/.chunk [Ref]</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2>PS4 Boundary Note</h2>
+        <ul>
+            <li>Inner PFS sector decryption is intentionally not bypassed; inner NTT assets (<code>.CC40TAD</code>, <code>.g1m</code>, <code>.g1t</code>, <code>.chunk</code>) remain reference-documented.</li>
+        </ul>
+    </section>
+</body>
+
+</html>

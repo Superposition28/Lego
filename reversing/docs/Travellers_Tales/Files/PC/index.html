@@ -1,28 +1,66 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>PC Combined Filesystem</title>
+    <title>PC Windows Builds &amp; Double Eleven Remasters</title>
     <link rel="stylesheet" href="../../style/main.css">
 </head>
+
 <body class="doc-page">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href='../../index.html#home' target='_parent'>Documentation</a><span>/</span><a href='../../index.html#Files' target='_parent'>Files</a><span>/</span>PC
-    </nav>
-    <h1>PC (Windows Retail &amp; Steam): Combined File &amp; Directory Layout</h1>
-<aside class="source-notice"><p><strong>Platform:</strong> Microsoft Windows (32-bit <code>PE32</code> Retail/Steam &amp; 64-bit <code>PE32+</code> AMD64 Remaster)</p></aside>
-<section class="doc-overview">
-    <h2>1. Classic &amp; NXG 32-bit Windows Layout (LSW2 PC &amp; LEGO Batman 2 Steam)</h2>
-    <ul>
-        <li><strong>LEGO Star Wars II (2006 PC ISO):</strong> <code>LEGOSTA2.EXE</code> (7.49 MB, PDB <code>c:\projects\starwars\Release_2K\starwars_pc.pdb</code>) mounting <code>GAME.DAT</code>, <code>PATCH.DAT</code>, and <code>STARTUP.DAT</code>.</li>
-        <li><strong>LEGO Batman 2 (2012 Steam):</strong> <code>LEGOBatman2.exe</code> (18.69 MB) mounting <code>GAME0.DAT</code>..<code>GAME6.DAT</code> (27,481 entries, <code>PakDat v1.01</code> TOC <code>v-4</code>), alongside loose <code>FILETABLE.TXT</code> (18,915 lines), <code>TRACKEDFILELIST360.TXT</code>, <code>ICONS_TEX.PAK</code> (136 files), and <code>Audio/</code> Ogg/WAV streams.</li>
-    </ul>
-    <h2>2. 64-bit Direct3D 11 Remaster Layout (2024 LEGO Harry Potter Collection)</h2>
-    <ul>
-        <li><code>harry1.exe</code> / <code>harry2.exe</code>: 64-bit AMD64 executables with <code>shaderblob_pc.blob</code> (13.86 MB) and <code>launcher.pkiwin</code>/<code>.pkdwin</code>.</li>
-        <li><code>harry1.datwin</code>, <code>harry1b.datwin</code>, <code>harry2.datwin</code>, <code>harry2b.datwin</code>: 64-bit archives (41,389 total files, TOC <code>v-1</code> with 24-byte entries, <code>0x12345678</code> canary, and <code>LZHAM</code> compression).</li>
-    </ul>
-</section>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../../index.html#home" target="_parent">Documentation</a><span>/</span><a href="../../Files/index.html">Files</a><span>/</span>PC Windows</nav>
+    <h1>PC Windows Filesystem &amp; Binary Notes</h1>
+    <aside class="source-notice">
+        <p><strong>Inspected Directly + Reference:</strong> <em>LSW2</em> PC, <em>TCS</em> Steam, <em>BM2</em> Steam, and 2024 <em>HP Collection</em> x64 (<code>.datwin</code>); <em>LEGO Worlds</em> noted via reference parsers.</p>
+    </aside>
+    <section class="doc-overview">
+        <p>Windows PC releases use Direct3D 9 (x86) / Direct3D 11 (x64) with little-endian F32 vertex buffers inside big-endian <code>HSEM</code> chunks and replace console audio (<code>.msf/.xma</code>) with <code>.ogg/.wav</code>.</p>
+        <div class="table-scroll">
+            <table class="format-counts">
+                <caption>PC Windows Inspected Source Images &amp; Archives</caption>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Build / IDs</th>
+                        <th>Container &amp; TOC</th>
+                        <th>Observed Formats / Counts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>LEGO Star Wars: The Complete Saga (2009 PC Steam)</td>
+                        <td>WinSteam GAME.DAT (ascending key anomaly)</td>
+                        <td>TOC v-3 (1 vol, 8B nodes) · LZ2K / Raw</td>
+                        <td>.pak, .cfg, .wav, .gsc, .ghg, .an3, .dds, .txt</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Batman 2: DC Super Heroes (2012 Steam)</td>
+                        <td>LEGOBatman2.exe (18,690,560 B) · GAME0..6.DAT + FILETABLE.TXT</td>
+                        <td>TOC v-4 (7 vols, PakDat v1.01) · LZ2K / Raw</td>
+                        <td>.gsc (HSEM/DXBC), .ghg, .tex, .led, .sf, .cbx (!B0X), .cu3, .aib</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Harry Potter Collection (2024 Double Eleven)</td>
+                        <td>harry1.exe (13.09 MB) / harry2.exe (14.43 MB)</td>
+                        <td>.datwin TOC v-1 (0x12345678 sentinel) + .pkiwin/.pkdwin · LZHAM (.datwin) / zlib (.pkdwin)</td>
+                        <td>.datwin, .pkiwin, .pkdwin, .gsc (HSEM/DXBC), .ghg</td>
+                    </tr>
+                    <tr>
+                        <td>LEGO Worlds (2017 PC Reference Parsers)</td>
+                        <td>Reference parser specs complementing local PS4 CUSA02985 PKGs</td>
+                        <td>.CC40TAD (TOC v-10 / v-11) · DFLT / ZIPX (RC4)</td>
+                        <td>.lxfml, .g1m, .g1t, .chunk, .ghg (DX11)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <h2>PC Specific Anomalies</h2>
+        <ul>
+            <li><em>TCS</em> Steam <code>GAME.DAT</code> (<code>v-3</code>) stores ascending integer IDs (<code>0x3c27d...</code>) in place of FNV1a-32 hashes.</li>
+            <li>2024 Double Eleven x64 remasters replace <code>.DAT</code> with <code>.datwin</code> (<code>0x12345678</code> sentinel + LZHAM) and <code>.pkiwin/.pkdwin</code> (zlib).</li>
+        </ul>
+    </section>
 </body>
+
 </html>
