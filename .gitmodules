@@ -26,7 +26,6 @@
 [submodule "Lego Star Wars"]
     path = Games/Lego_Star_Wars
     url = https://github.com/Superposition28/LegoStarWars.git
-
 [submodule "Lego The Hobbit"]
     path = Games/Lego_The_Hobbit
     url = https://github.com/Superposition28/LegoTheHobbit.git

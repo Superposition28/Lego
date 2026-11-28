@@ -47,5 +47,5 @@ Games/Lego_Harry_Potter/Source/
 ## 4. Reverse Engineering Assistant (REA) Workspace
 
 The executable analysis workstation mirroring the parent engine's reference architecture is situated at:
-[`Games/Lego_Harry_Potter/Source/Orginals/PS3/REA/`](../../../../Games/Lego_Harry_Potter/Source/Orginals/PS3/REA/guide.md)
+[`../../../../Games/Lego_Harry_Potter/Source/Orginals/PS3/REA/`](../../../../Games/Lego_Harry_Potter/Source/Orginals/PS3/REA/guide.md)
 
